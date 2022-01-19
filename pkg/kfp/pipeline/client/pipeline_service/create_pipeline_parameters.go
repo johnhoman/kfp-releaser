@@ -15,7 +15,7 @@ import (
 	cr "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 
-	"github.com/johnhoman/kfp-releaser/pkg/kfp/http/models"
+	"github.com/johnhoman/kfp-releaser/pkg/kfp/pipeline/models"
 )
 
 // NewCreatePipelineParams creates a new CreatePipelineParams object,

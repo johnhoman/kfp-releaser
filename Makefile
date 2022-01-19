@@ -46,9 +46,12 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: swagger controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-	mkdir -p $(shell pwd)/pkg/kfp/http
+	mkdir -p $(shell pwd)/pkg/kfp/pipeline
 	$(SWAGGER) generate client -f https://raw.githubusercontent.com/kubeflow/pipelines/master/backend/api/swagger/pipeline.swagger.json \
-		--target $(shell pwd)/pkg/kfp/http
+		--target $(shell pwd)/pkg/kfp/pipeline
+	mkdir -p $(shell pwd)/pkg/kfp/pipeline_upload
+	$(SWAGGER) generate client -f https://raw.githubusercontent.com/kubeflow/pipelines/master/backend/api/swagger/pipeline.upload.swagger.json \
+		--target $(shell pwd)/pkg/kfp/pipeline_upload
 	go mod tidy
 
 .PHONY: fmt
@@ -124,6 +127,12 @@ SWAGGER = $(shell pwd)/bin/swagger
 .PHONY: swagger
 swagger:
 	$(call go-get-tool,$(SWAGGER),github.com/go-swagger/go-swagger/cmd/swagger@latest)
+
+APISERVER = $(shell pwd)/bin/apiserver
+
+.PHONY: apiserver
+apiserver:
+	$(call go-get-tool,$(APISERVER),github.com/kubeflow/pipelines/backend/src/apiserver@latest)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))

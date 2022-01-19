@@ -12,7 +12,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 
-	"github.com/johnhoman/kfp-releaser/pkg/kfp/http/models"
+	"github.com/johnhoman/kfp-releaser/pkg/kfp/pipeline/models"
 )
 
 // UpdatePipelineDefaultVersionReader is a Reader for the UpdatePipelineDefaultVersion structure.

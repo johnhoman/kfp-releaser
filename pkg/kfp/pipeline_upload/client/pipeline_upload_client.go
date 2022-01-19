@@ -10,10 +10,10 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 
-	"github.com/johnhoman/kfp-releaser/pkg/kfp/http/client/pipeline_service"
+	"github.com/johnhoman/kfp-releaser/pkg/kfp/pipeline_upload/client/pipeline_upload_service"
 )
 
-// Default backend API pipeline proto HTTP client.
+// Default pipeline upload HTTP client.
 var Default = NewHTTPClient(nil)
 
 const (
@@ -28,14 +28,14 @@ const (
 // DefaultSchemes are the default schemes found in Meta (info) section of spec file
 var DefaultSchemes = []string{"http", "https"}
 
-// NewHTTPClient creates a new backend API pipeline proto HTTP client.
-func NewHTTPClient(formats strfmt.Registry) *BackendAPIPipelineProto {
+// NewHTTPClient creates a new pipeline upload HTTP client.
+func NewHTTPClient(formats strfmt.Registry) *PipelineUpload {
 	return NewHTTPClientWithConfig(formats, nil)
 }
 
-// NewHTTPClientWithConfig creates a new backend API pipeline proto HTTP client,
+// NewHTTPClientWithConfig creates a new pipeline upload HTTP client,
 // using a customizable transport config.
-func NewHTTPClientWithConfig(formats strfmt.Registry, cfg *TransportConfig) *BackendAPIPipelineProto {
+func NewHTTPClientWithConfig(formats strfmt.Registry, cfg *TransportConfig) *PipelineUpload {
 	// ensure nullable parameters have default
 	if cfg == nil {
 		cfg = DefaultTransportConfig()
@@ -46,16 +46,16 @@ func NewHTTPClientWithConfig(formats strfmt.Registry, cfg *TransportConfig) *Bac
 	return New(transport, formats)
 }
 
-// New creates a new backend API pipeline proto client
-func New(transport runtime.ClientTransport, formats strfmt.Registry) *BackendAPIPipelineProto {
+// New creates a new pipeline upload client
+func New(transport runtime.ClientTransport, formats strfmt.Registry) *PipelineUpload {
 	// ensure nullable parameters have default
 	if formats == nil {
 		formats = strfmt.Default
 	}
 
-	cli := new(BackendAPIPipelineProto)
+	cli := new(PipelineUpload)
 	cli.Transport = transport
-	cli.PipelineService = pipeline_service.New(transport, formats)
+	cli.PipelineUploadService = pipeline_upload_service.New(transport, formats)
 	return cli
 }
 
@@ -98,15 +98,15 @@ func (cfg *TransportConfig) WithSchemes(schemes []string) *TransportConfig {
 	return cfg
 }
 
-// BackendAPIPipelineProto is a client for backend API pipeline proto
-type BackendAPIPipelineProto struct {
-	PipelineService pipeline_service.ClientService
+// PipelineUpload is a client for pipeline upload
+type PipelineUpload struct {
+	PipelineUploadService pipeline_upload_service.ClientService
 
 	Transport runtime.ClientTransport
 }
 
 // SetTransport changes the transport on the client and all its subresources
-func (c *BackendAPIPipelineProto) SetTransport(transport runtime.ClientTransport) {
+func (c *PipelineUpload) SetTransport(transport runtime.ClientTransport) {
 	c.Transport = transport
-	c.PipelineService.SetTransport(transport)
+	c.PipelineUploadService.SetTransport(transport)
 }

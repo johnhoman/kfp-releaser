@@ -19,16 +19,16 @@ import (
 
 type PipelineService struct {
 	sync.Mutex
-	// map[models.APIPipeline.Name]models.APIPipeline
+	// map[models.APIPipeline.ID]models.APIPipeline
 	Pipelines        map[string]models.APIPipeline
-	PipelineVersions map[string][]models.APIPipelineVersion
+	PipelineVersions map[string]map[string]models.APIPipelineVersion
 }
 
 var internalServerError = fmt.Errorf("\"&{0 [] }\" (*models.APIStatus) is not supported by the TextConsumer, %s",
 	"can be resolved by supporting TextUnmarshaler interface")
 
 func (p *PipelineService) UploadPipeline(params *up.UploadPipelineParams, authInfo runtime.ClientAuthInfoWriter, opts ...up.ClientOption) (*up.UploadPipelineOK, error) {
-	if _, found := p.Pipelines[*params.Name]; found {
+	for _, pipeline := range p.Pipelines {
 		// Kubeflow doesn't return a response body for this, so the swagger generated client
 		// isn't able to create the APIStatus response, so for now just mimic that behaviour
 		// E0117 16:21:25.254145       7 pipeline_upload_server.go:241] Failed to upload pipelines. Error: Error creating pipeline: Create pipeline failed: Already exist error: Failed to create a new pipeline. The name production-cowsay already exist. Please specify a new name.
@@ -40,14 +40,19 @@ func (p *PipelineService) UploadPipeline(params *up.UploadPipelineParams, authIn
 		// &{0 [] } (*models.APIStatus) is not supported by the TextConsumer, can be resolved by supporting TextUnmarshaler interface
 
 		// Always return internal server error. Many errors aren't handled by api server
-		return nil, internalServerError
+		if pipeline.Name == *params.Name {
+			return nil, internalServerError
+		}
 	}
 	uid := uuid.New().String()
+	now := strfmt.DateTime(time.Now().UTC())
 	m := models.APIPipeline{
-		CreatedAt: strfmt.DateTime(time.Now().UTC()),
+		CreatedAt: now,
 		DefaultVersion: &models.APIPipelineVersion{
-			CreatedAt: strfmt.DateTime(time.Now().UTC()),
+			CreatedAt: now,
 			Description: "",
+			ID: uid,
+			Name: *params.Name,
 		},
 		Description: *params.Description,
 		Error: "",
@@ -59,7 +64,8 @@ func (p *PipelineService) UploadPipeline(params *up.UploadPipelineParams, authIn
 	}
 	p.Mutex.Lock()
 	defer p.Mutex.Unlock()
-	p.Pipelines[m.Name] = m
+	p.Pipelines[m.ID] = m
+	p.PipelineVersions[m.ID] = map[string]models.APIPipelineVersion{m.ID: *m.DefaultVersion}
 	// Kubeflow api tracks upload api models and pipeline api models as separate objects in the swagger specs,
 	// so we have to duplicate it for the response here
 	payload := &upmodels.APIPipeline{}
@@ -118,7 +124,10 @@ func (p *PipelineService) UploadPipelineVersion(params *up.UploadPipelineVersion
 
 	p.Mutex.Lock()
 	defer p.Mutex.Unlock()
-	p.PipelineVersions[id] = append(p.PipelineVersions[id], m)
+	p.PipelineVersions[id][m.ID] = m
+	pipeline := p.Pipelines[id]
+	pipeline.DefaultVersion = &m
+	p.Pipelines[id] = pipeline
 
 	out := &upmodels.APIPipelineVersion{}
 	out.CreatedAt = m.CreatedAt
@@ -143,72 +152,76 @@ func (p *PipelineService) UploadPipelineVersion(params *up.UploadPipelineVersion
 	return &up.UploadPipelineVersionOK{Payload: out}, nil
 }
 
-func (p *PipelineService) CreatePipeline(params *ps.CreatePipelineParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.CreatePipelineOK, error) {
-	panic("implement me")
-}
-
-func (p *PipelineService) CreatePipelineVersion(params *ps.CreatePipelineVersionParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.CreatePipelineVersionOK, error) {
-	panic("implement me")
-}
-
 func (p *PipelineService) DeletePipeline(params *ps.DeletePipelineParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.DeletePipelineOK, error) {
 
 	p.Mutex.Lock()
 	defer p.Mutex.Unlock()
-	pipelines := make(map[string]models.APIPipeline, len(p.Pipelines))
-	found := false
-	for key, value := range p.Pipelines {
-		if value.ID == params.ID {
-			found = true
-		} else {
-			pipelines[key] = value
-		}
+
+	_, ok := p.Pipelines[params.ID]
+	if ok {
+		delete(p.Pipelines, params.ID)
+		delete(p.PipelineVersions, params.ID)
+		return &ps.DeletePipelineOK{Payload: map[string]interface{}{}}, nil
 	}
-	if found {
-		p.Pipelines = pipelines
-		return &ps.DeletePipelineOK{}, nil
-	}
+
 	return nil, ps.NewDeletePipelineDefault(http.StatusNotFound)
 }
 
 func (p *PipelineService) DeletePipelineVersion(params *ps.DeletePipelineVersionParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.DeletePipelineVersionOK, error) {
-	panic("implement me")
+	for id, versions := range p.PipelineVersions {
+		_, ok := versions[params.VersionID]
+		if ok {
+			delete(p.PipelineVersions[id], params.VersionID)
+			return &ps.DeletePipelineVersionOK{Payload: map[string]interface{}{}}, nil
+		}
+	}
+	return nil, ps.NewDeletePipelineVersionDefault(http.StatusNotFound)
 }
 
 func (p *PipelineService) GetPipeline(params *ps.GetPipelineParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.GetPipelineOK, error) {
-	panic("implement me")
+	pipeline, ok := p.Pipelines[params.ID]
+	if !ok {
+		return nil, ps.NewGetPipelineDefault(http.StatusNotFound)
+	}
+	return &ps.GetPipelineOK{Payload: &pipeline}, nil
 }
 
 func (p *PipelineService) GetPipelineVersion(params *ps.GetPipelineVersionParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.GetPipelineVersionOK, error) {
-	panic("implement me")
-}
-
-func (p *PipelineService) GetPipelineVersionTemplate(params *ps.GetPipelineVersionTemplateParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.GetPipelineVersionTemplateOK, error) {
-	panic("implement me")
-}
-
-func (p *PipelineService) GetTemplate(params *ps.GetTemplateParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.GetTemplateOK, error) {
-	panic("implement me")
-}
-
-func (p *PipelineService) ListPipelineVersions(params *ps.ListPipelineVersionsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.ListPipelineVersionsOK, error) {
-	panic("implement me")
-}
-
-func (p *PipelineService) ListPipelines(params *ps.ListPipelinesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.ListPipelinesOK, error) {
-	panic("implement me")
+	for _, versions := range p.PipelineVersions {
+		version, ok := versions[params.VersionID]
+		if ok {
+			return &ps.GetPipelineVersionOK{Payload: &version}, nil
+		}
+	}
+	return nil, ps.NewGetPipelineVersionDefault(http.StatusNotFound)
 }
 
 func (p *PipelineService) UpdatePipelineDefaultVersion(params *ps.UpdatePipelineDefaultVersionParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.UpdatePipelineDefaultVersionOK, error) {
-	panic("implement me")
+	// There's a few silent failures here
+	p.Mutex.Lock()
+	defer p.Mutex.Unlock()
+
+	pipeline, ok := p.Pipelines[params.PipelineID]
+	if ok {
+		versions := p.PipelineVersions[pipeline.ID]
+		version, ok := versions[params.VersionID]
+		if !ok {
+			// Bug in kubeflow I think
+			// If the version doesn't exist it just deletes the default version from the pipeline
+			pipeline.DefaultVersion = &models.APIPipelineVersion{}
+		} else {
+			pipeline.DefaultVersion = &version
+		}
+		p.Pipelines[params.PipelineID] = pipeline
+	}
+	return &ps.UpdatePipelineDefaultVersionOK{Payload: map[string]interface{}{}}, nil
 }
 
 var _ kfp.PipelineService = &PipelineService{}
-var _ kfp.PipelineUploadService = &PipelineService{}
 
 func NewPipelineService() *PipelineService {
 	return &PipelineService{
 		Pipelines:        make(map[string]models.APIPipeline),
-		PipelineVersions: make(map[string][]models.APIPipelineVersion),
+		PipelineVersions: map[string]map[string]models.APIPipelineVersion{},
 	}
 }

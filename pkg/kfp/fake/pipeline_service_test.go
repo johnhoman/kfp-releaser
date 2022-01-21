@@ -2,16 +2,20 @@ package fake_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/johnhoman/kfp-releaser/pkg/kfp/fake"
+	"github.com/johnhoman/kfp-releaser/pkg/kfp/pipeline/models"
 	"net/http"
 	"strings"
 
 	"github.com/go-openapi/runtime"
 	"github.com/google/uuid"
-	up "github.com/johnhoman/kfp-releaser/pkg/kfp/pipeline_upload/client/pipeline_upload_service"
 
-	"github.com/johnhoman/kfp-releaser/pkg/kfp"
 	ps "github.com/johnhoman/kfp-releaser/pkg/kfp/pipeline/client/pipeline_service"
+	up "github.com/johnhoman/kfp-releaser/pkg/kfp/pipeline_upload/client/pipeline_upload_service"
+	"github.com/johnhoman/kfp-releaser/pkg/kfp/pipelines"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -58,7 +62,7 @@ type PipelineService struct {
 }
 
 var _ = Describe("PipelineService", func() {
-	var service kfp.PipelineService
+	var service pipelines.PipelineService
 	var ctx context.Context
 	var cancelFunc context.CancelFunc
 	var pipelineIds []string
@@ -443,8 +447,6 @@ var _ = Describe("PipelineService", func() {
 		})
 
 	})
-	// This list implementation will be somewhat complicated, and I don't think I need it
-	/*
 	It("Should list pipelines", func() {
 		Expect(reader.Close()).To(Succeed())
 		for k := 0; k < 5; k++ {
@@ -469,7 +471,7 @@ var _ = Describe("PipelineService", func() {
 
 		pipelines := make([]*models.APIPipeline, 0, 5)
 
-		listOut, err := pipelineService.ListPipelines(&ps.ListPipelinesParams{
+		listOut, err := service.ListPipelines(&ps.ListPipelinesParams{
 			Filter: stringPtr(string(raw)),
 			PageSize: int32Ptr(3),
 			PageToken: nil,
@@ -481,7 +483,7 @@ var _ = Describe("PipelineService", func() {
 		Expect(listOut.Payload.Pipelines).To(HaveLen(3))
 		Expect(listOut.Payload.TotalSize).To(Equal(int32(5)))
 		pipelines = append(pipelines, listOut.Payload.Pipelines...)
-		listOut, err = pipelineService.ListPipelines(&ps.ListPipelinesParams{
+		listOut, err = service.ListPipelines(&ps.ListPipelinesParams{
 			Filter: stringPtr(string(raw)),
 			PageSize: int32Ptr(2),
 			PageToken: &listOut.Payload.NextPageToken,
@@ -503,6 +505,75 @@ var _ = Describe("PipelineService", func() {
 			Expect(found).To(BeTrue())
 		}
 	})
+	It("Should list pipeline versions", func() {
+		out, err := service.UploadPipeline(&up.UploadPipelineParams{
+			Description: stringPtr(description),
+			Name:        stringPtr(name),
+			Uploadfile:  reader,
+			Context:     ctx,
+		}, nil)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(out).ShouldNot(BeNil())
+		pipelineIds = append(pipelineIds, out.Payload.ID)
+		for k := 0; k < 5; k++ {
+			reader = newCowSay(name)
+			out, err := service.UploadPipelineVersion(&up.UploadPipelineVersionParams{
+				Description: stringPtr(description),
+				Name:        stringPtr(fmt.Sprintf("%s-%d", name, k)),
+				Pipelineid: stringPtr(out.GetPayload().ID),
+				Uploadfile:  reader,
+				Context:     ctx,
+			}, nil)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(out).ShouldNot(BeNil())
+		}
+		filter := map[string]interface{}{
+			"predicates": []interface{}{
+				map[string]interface{}{"op": "IS_SUBSTRING", "key": "name", "string_value": name},
+			},
+		}
+		raw, err := json.Marshal(filter)
+		Expect(err).To(Succeed())
+
+		versions := make([]*models.APIPipelineVersion, 0, 5)
+
+		listOut, err := service.ListPipelineVersions(&ps.ListPipelineVersionsParams{
+			Filter: stringPtr(string(raw)),
+			PageSize: int32Ptr(3),
+			PageToken: nil,
+			Context: ctx,
+			ResourceKeyType: stringPtr(string(models.APIResourceTypePIPELINE)),
+			ResourceKeyID: stringPtr(out.GetPayload().ID),
+		}, nil)
+		// eyJTb3J0QnlGaWVsZE5hbWUiOiJDcmVhdGVkQXRJblNlYyIsIlNvcnRCeUZpZWxkVmFsdWUiOjE2NDI0NzU2MzQsIlNvcnRCeUZpZWxkUHJlZml4IjoicGlwZWxpbmVzLiIsIktleUZpZWxkTmFtZSI6IlVVSUQiLCJLZXlGaWVsZFZhbHVlIjoiYjUxMDU0YjctYzc4OS00YTQ5LWJiNGQtODZkOTEwMzQwMDZhIiwiS2V5RmllbGRQcmVmaXgiOiJwaXBlbGluZXMuIiwiSXNEZXNjIjpmYWxzZSwiTW9kZWxOYW1lIjoicGlwZWxpbmVzIiwiRmlsdGVyIjp7IkZpbHRlclByb3RvIjoie1wicHJlZGljYXRlc1wiOlt7XCJvcFwiOlwiSVNfU1VCU1RSSU5HXCIsXCJrZXlcIjpcInBpcGVsaW5lcy5OYW1lXCIsXCJzdHJpbmdWYWx1ZVwiOlwidGVzdHBpcGVsaW5lLTA2MmYzY2FjXCJ9XX0iLCJFUSI6e30sIk5FUSI6e30sIkdUIjp7fSwiR1RFIjp7fSwiTFQiOnt9LCJMVEUiOnt9LCJJTiI6e30sIlNVQlNUUklORyI6eyJwaXBlbGluZXMuTmFtZSI6WyJ0ZXN0cGlwZWxpbmUtMDYyZjNjYWMiXX19fQ==
+		Expect(err).ToNot(HaveOccurred())
+		Expect(listOut.Payload.Versions).To(HaveLen(3))
+		Expect(listOut.Payload.TotalSize).To(Equal(int32(6)))
+		versions = append(versions, listOut.Payload.Versions...)
+		listOut, err = service.ListPipelineVersions(&ps.ListPipelineVersionsParams{
+			Filter: stringPtr(string(raw)),
+			PageSize: int32Ptr(3),
+			PageToken: &listOut.Payload.NextPageToken,
+			ResourceKeyType: stringPtr(string(models.APIResourceTypePIPELINE)),
+			ResourceKeyID: stringPtr(out.GetPayload().ID),
+			Context: ctx,
+		}, nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(listOut.Payload.Versions).To(HaveLen(3))
+		Expect(listOut.Payload.TotalSize).To(Equal(int32(6)))
+		versions = append(versions, listOut.Payload.Versions...)
+
+		for _, k := range []string{"-0", "-1", "-2", "-3", "-4"} {
+			found := false
+			for _, pl := range versions {
+				if strings.HasSuffix(pl.Name, k) {
+					found = true
+				}
+			}
+			Expect(found).To(BeTrue())
+		}
+	})
+	/*
 	table.DescribeTable("", func(filter map[string]interface{}) {
 		raw, err := json.Marshal(filter)
 		Expect(err).ToNot(HaveOccurred())

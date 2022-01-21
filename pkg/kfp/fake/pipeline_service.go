@@ -1,15 +1,19 @@
 package fake
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
+	"github.com/johnhoman/kfp-releaser/pkg/kfp/pipelines"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/johnhoman/kfp-releaser/pkg/kfp"
 	ps "github.com/johnhoman/kfp-releaser/pkg/kfp/pipeline/client/pipeline_service"
 	"github.com/johnhoman/kfp-releaser/pkg/kfp/pipeline/models"
 	up "github.com/johnhoman/kfp-releaser/pkg/kfp/pipeline_upload/client/pipeline_upload_service"
@@ -17,11 +21,25 @@ import (
 )
 
 
+type PagedRequest struct {
+	Items []*models.APIPipeline
+	LastSent int
+	Total int
+}
+
+type PagedVersionRequest struct {
+	Items []*models.APIPipelineVersion
+	LastSent int
+	Total int
+}
+
 type PipelineService struct {
 	sync.Mutex
 	// map[models.APIPipeline.ID]models.APIPipeline
 	Pipelines        map[string]models.APIPipeline
 	PipelineVersions map[string]map[string]models.APIPipelineVersion
+	PagedRequests    map[string]PagedRequest
+	PagedVersionRequests map[string]PagedVersionRequest
 }
 
 var internalServerError = fmt.Errorf("\"&{0 [] }\" (*models.APIStatus) is not supported by the TextConsumer, %s",
@@ -217,11 +235,225 @@ func (p *PipelineService) UpdatePipelineDefaultVersion(params *ps.UpdatePipeline
 	return &ps.UpdatePipelineDefaultVersionOK{Payload: map[string]interface{}{}}, nil
 }
 
-var _ kfp.PipelineService = &PipelineService{}
+func (p *PipelineService) ListPipelines(params *ps.ListPipelinesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.ListPipelinesOK, error) {
+	p.Mutex.Lock()
+	defer p.Mutex.Unlock()
+	if params.PageToken != nil {
+		req := p.PagedRequests[*params.PageToken]
+		pageSize := req.Total - req.LastSent - 1
+		if params.PageSize != nil && *params.PageSize < int32(pageSize) {
+			pageSize = int(*params.PageSize)
+		}
+		apiPipelines := make([]*models.APIPipeline, 0, pageSize)
+		for pageSize > 0 {
+			req.LastSent++
+			apiPipelines = append(apiPipelines, req.Items[req.LastSent])
+			pageSize--
+		}
+		token := *params.PageToken
+		if req.LastSent == req.Total - 1 {
+			// Finished sending everything
+			delete(p.PagedRequests, token)
+			token = ""
+		} else {
+			p.PagedRequests[token] = req
+		}
+		return &ps.ListPipelinesOK{Payload: &models.APIListPipelinesResponse{
+			NextPageToken: token,
+			Pipelines: apiPipelines,
+			TotalSize: int32(req.Total),
+		}}, nil
+	}
+
+	apiPipelines := make([]*models.APIPipeline, 0, len(p.Pipelines))
+	for _, pipeline := range p.Pipelines {
+		pl := pipeline
+		apiPipelines = append(apiPipelines, &pl)
+	}
+
+	decoded, err := url.QueryUnescape(*params.Filter)
+	if err != nil {
+		return &ps.ListPipelinesOK{}, err
+	}
+	var filter map[string]interface{}
+	if err := json.Unmarshal([]byte(decoded), &filter); err != nil {
+		return &ps.ListPipelinesOK{}, err
+	}
+
+	for _, predicate := range filter["predicates"].([]interface{}) {
+		m := predicate.(map[string]interface{})
+
+		var pred func(string, string) bool
+
+		if op, ok := m["op"]; !ok {
+			return nil, ps.NewListPipelinesDefault(http.StatusBadRequest)
+		} else {
+			switch op {
+			case "EQUALS": {
+				pred = func(a, b string) bool {
+					return a == b
+				}
+			}
+			case "IS_SUBSTRING": {
+				pred = strings.Contains
+			}
+			default:
+				return nil, ps.NewListPipelinesDefault(http.StatusBadRequest)
+			}
+		}
+		if key, ok := m["key"]; !ok || key != "name" {
+			return nil, ps.NewListPipelinesDefault(http.StatusBadRequest)
+		}
+		if _, ok := m["string_value"]; !ok {
+			return nil, ps.NewListPipelinesDefault(http.StatusBadRequest)
+		}
+		for k, item := range apiPipelines {
+			if !pred(item.Name, m["string_value"].(string)) {
+				apiPipelines[k] = nil
+			}
+		}
+	}
+
+	validPipelines := make([]*models.APIPipeline, 0, len(apiPipelines))
+	for _, pl := range apiPipelines {
+		if pl != nil {
+			validPipelines = append(validPipelines, pl)
+		}
+	}
+
+	token := ""
+	page := validPipelines
+	if int(*params.PageSize) < len(validPipelines) {
+		token = base64.StdEncoding.EncodeToString([]byte(uuid.New().String()))
+		p.PagedRequests[token] = PagedRequest{
+			Total: len(validPipelines),
+			Items: validPipelines,
+			LastSent: int(*params.PageSize) - 1,
+		}
+		page = validPipelines[:*params.PageSize]
+	}
+
+	out := &ps.ListPipelinesOK{Payload: &models.APIListPipelinesResponse{
+		Pipelines: page,
+		TotalSize: int32(len(validPipelines)),
+		NextPageToken: token,
+	}}
+	return out, nil
+}
+
+func (p *PipelineService) ListPipelineVersions(params *ps.ListPipelineVersionsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ps.ClientOption) (*ps.ListPipelineVersionsOK, error) {
+	p.Mutex.Lock()
+	defer p.Mutex.Unlock()
+	if params.PageToken != nil {
+		req := p.PagedVersionRequests[*params.PageToken]
+		pageSize := req.Total - req.LastSent - 1
+		if params.PageSize != nil && *params.PageSize < int32(pageSize) {
+			pageSize = int(*params.PageSize)
+		}
+		versions := make([]*models.APIPipelineVersion, 0, pageSize)
+		for pageSize > 0 {
+			req.LastSent++
+			versions = append(versions, req.Items[req.LastSent])
+			pageSize--
+		}
+		token := *params.PageToken
+		if req.LastSent == req.Total - 1 {
+			// Finished sending everything
+			delete(p.PagedVersionRequests, token)
+			token = ""
+		} else {
+			p.PagedVersionRequests[token] = req
+		}
+		return &ps.ListPipelineVersionsOK{Payload: &models.APIListPipelineVersionsResponse{
+			NextPageToken: token,
+			Versions: versions,
+			TotalSize: int32(req.Total),
+		}}, nil
+	}
+
+	versions := make([]*models.APIPipelineVersion, 0, len(p.Pipelines))
+	for _, version := range p.PipelineVersions[*params.ResourceKeyID] {
+		vs := version
+		versions = append(versions, &vs)
+	}
+
+	decoded, err := url.QueryUnescape(*params.Filter)
+	if err != nil {
+		return &ps.ListPipelineVersionsOK{}, err
+	}
+	var filter map[string]interface{}
+	if err := json.Unmarshal([]byte(decoded), &filter); err != nil {
+		return &ps.ListPipelineVersionsOK{}, err
+	}
+
+	for _, predicate := range filter["predicates"].([]interface{}) {
+		m := predicate.(map[string]interface{})
+
+		var pred func(string, string) bool
+
+		if op, ok := m["op"]; !ok {
+			return nil, ps.NewListPipelineVersionsDefault(http.StatusBadRequest)
+		} else {
+			switch op {
+			case "EQUALS": {
+				pred = func(a, b string) bool {
+					return a == b
+				}
+			}
+			case "IS_SUBSTRING": {
+				pred = strings.Contains
+			}
+			default:
+				return nil, ps.NewListPipelineVersionsDefault(http.StatusBadRequest)
+			}
+		}
+		if key, ok := m["key"]; !ok || key != "name" {
+			return nil, ps.NewListPipelinesDefault(http.StatusBadRequest)
+		}
+		if _, ok := m["string_value"]; !ok {
+			return nil, ps.NewListPipelinesDefault(http.StatusBadRequest)
+		}
+		for k, item := range versions {
+			if !pred(item.Name, m["string_value"].(string)) {
+				versions[k] = nil
+			}
+		}
+	}
+
+	validVersions := make([]*models.APIPipelineVersion, 0, len(versions))
+	for _, pl := range versions {
+		if pl != nil {
+			validVersions = append(validVersions, pl)
+		}
+	}
+
+	token := ""
+	page := validVersions
+	if int(*params.PageSize) < len(validVersions) {
+		token = base64.StdEncoding.EncodeToString([]byte(uuid.New().String()))
+		p.PagedVersionRequests[token] = PagedVersionRequest{
+			Total: len(validVersions),
+			Items: validVersions,
+			LastSent: int(*params.PageSize) - 1,
+		}
+		page = validVersions[:*params.PageSize]
+	}
+
+	out := &ps.ListPipelineVersionsOK{Payload: &models.APIListPipelineVersionsResponse{
+		Versions: page,
+		TotalSize: int32(len(validVersions)),
+		NextPageToken: token,
+	}}
+	return out, nil
+}
+
+var _ pipelines.PipelineService = &PipelineService{}
 
 func NewPipelineService() *PipelineService {
 	return &PipelineService{
 		Pipelines:        make(map[string]models.APIPipeline),
 		PipelineVersions: map[string]map[string]models.APIPipelineVersion{},
+		PagedRequests: make(map[string]PagedRequest),
+		PagedVersionRequests: make(map[string]PagedVersionRequest),
 	}
 }

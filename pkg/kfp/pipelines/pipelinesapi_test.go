@@ -191,7 +191,7 @@ var _ = Describe("PipelinesApi", func() {
 			Expect(pipelines.IsConflict(err)).To(BeTrue())
 		})
 	})
-	FContext("GetVersion", func() {
+	Context("GetVersion", func() {
 		It("Should get the version info", func() {
 			var err error
 			pipeline, err = api.Create(ctx, &pipelines.CreateOptions{

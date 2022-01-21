@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/johnhoman/kfp-releaser/pkg/kfp/pipelines"
 	"strings"
+	"time"
 
 	"github.com/johnhoman/kfp-releaser/pkg/kfp/fake"
 
@@ -50,7 +51,7 @@ func newWhaleSay() map[string]interface{} {
 	return content
 }
 var _ = Describe("PipelinesApi", func() {
-	var api pipelines.Pipelines
+	var api pipelines.Interface
 	var pipeline *pipelines.Pipeline
 	var ctx context.Context
 	var cancelFunc context.CancelFunc
@@ -59,7 +60,7 @@ var _ = Describe("PipelinesApi", func() {
 	BeforeEach(func() {
 		name = "testcase-" + uuid.New().String()[:8]
 		description = strings.ToTitle(strings.Join(strings.Split(name, "-"), " "))
-		api = pipelines.NewPipelinesApi(fake.NewPipelineService(), nil)
+		api = pipelines.New(fake.NewPipelineService(), nil)
 		ctx, cancelFunc = context.WithCancel(context.Background())
 	})
 	AfterEach(func() {
@@ -188,6 +189,52 @@ var _ = Describe("PipelinesApi", func() {
 			})
 			Expect(err).Should(HaveOccurred())
 			Expect(pipelines.IsConflict(err)).To(BeTrue())
+		})
+	})
+	FContext("GetVersion", func() {
+		It("Should get the version info", func() {
+			var err error
+			pipeline, err = api.Create(ctx, &pipelines.CreateOptions{
+				Name:        name,
+				Workflow:    newWhaleSay(),
+				Description: description,
+			})
+			Expect(err).To(Succeed())
+			Expect(pipeline).ToNot(BeNil())
+
+			version, err := api.GetVersion(ctx, &pipelines.GetOptions{ID: pipeline.ID})
+			Expect(err).To(Succeed())
+			Expect(version.PipelineID).To(Equal(pipeline.ID))
+			Expect(version.Name).To(Equal(pipeline.Name))
+			Expect(version.ID).To(Equal(pipeline.ID))
+			Expect(time.Now().UTC().Sub(version.CreatedAt)).To(BeNumerically("~", 0, time.Second))
+		})
+	})
+	Context("DeleteVersion", func() {
+		It("Should delete a version", func() {
+			var err error
+			pipeline, err = api.Create(ctx, &pipelines.CreateOptions{
+				Name:        name,
+				Workflow:    newWhaleSay(),
+				Description: description,
+			})
+			Expect(err).To(Succeed())
+			Expect(pipeline).ToNot(BeNil())
+			version, err := api.CreateVersion(ctx, &pipelines.CreateVersionOptions{
+				PipelineID: pipeline.ID,
+				Name: name,
+				Description: description,
+				Workflow: newWhaleSay(),
+			})
+			Expect(err).Should(HaveOccurred())
+			Expect(pipelines.IsConflict(err)).To(BeTrue())
+
+			Expect(api.DeleteVersion(ctx, &pipelines.DeleteOptions{ID: version.ID})).Should(Succeed())
+		})
+		It("Should return a 404 for a version that doesn't exist", func() {
+			err := api.DeleteVersion(ctx, &pipelines.DeleteOptions{ID: uuid.New().String()})
+			Expect(err).Should(HaveOccurred())
+			Expect(pipelines.IsNotFound(err)).To(BeTrue())
 		})
 	})
 })

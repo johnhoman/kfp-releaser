@@ -79,16 +79,32 @@ func (p *pipelinesApi) CreateVersion(ctx context.Context, options *CreateVersion
     if err != nil {
         return rv, err
     }
-    return &PipelineVersion{
-        ID: version.GetPayload().ID,
-        Name: version.GetPayload().Name,
-        CreatedAt: time.Time(version.GetPayload().CreatedAt),
-        PipelineID: options.PipelineID,
-    }, nil
+    return p.GetVersion(ctx, &GetOptions{ID: version.GetPayload().ID})
 }
 
 func (p *pipelinesApi) DeleteVersion(ctx context.Context, options *DeleteOptions) error {
     panic("implement me")
+}
+
+func (p *pipelinesApi) GetVersion(ctx context.Context, options *GetOptions) (*PipelineVersion, error) {
+    out, err := p.service.GetPipelineVersion(&ps.GetPipelineVersionParams{
+        VersionID: options.ID,
+        Context: ctx,
+    }, p.authInfo)
+    if err != nil {
+        e, ok := err.(*ps.GetPipelineVersionDefault)
+        if ok {
+            if e.Code() == http.StatusNotFound {
+                return &PipelineVersion{}, NewNotFound()
+            }
+        }
+    }
+    return &PipelineVersion{
+        ID: out.GetPayload().ID,
+        Name: out.GetPayload().Name,
+        CreatedAt: time.Time(out.GetPayload().CreatedAt),
+        PipelineID: options.ID,
+    }, nil
 }
 
 func (p *pipelinesApi) Create(ctx context.Context, options *CreateOptions) (*Pipeline, error) {
@@ -226,11 +242,11 @@ func (p *pipelinesApi) Delete(ctx context.Context, options *DeleteOptions) error
     return err
 }
 
-func NewPipelinesApi(service PipelineService, authInfo runtime.ClientAuthInfoWriter) *pipelinesApi {
+func New(service PipelineService, authInfo runtime.ClientAuthInfoWriter) *pipelinesApi {
     return &pipelinesApi{service: service, authInfo: authInfo}
 }
 
-var _ Pipelines = &pipelinesApi{}
+var _ Interface = &pipelinesApi{}
 
 func stringPointer(s string) *string {
     return &s

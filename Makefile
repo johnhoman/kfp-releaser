@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= jackhoman/kfp-releaser:$(shell git describe --tags --always --dirty | sed 's/^v//')
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.22
 
@@ -44,15 +44,8 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 .PHONY: generate
-generate: swagger controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-	mkdir -p $(shell pwd)/pkg/kfp/pipeline
-	$(SWAGGER) generate client -f https://raw.githubusercontent.com/kubeflow/pipelines/master/backend/api/swagger/pipeline.swagger.json \
-		--target $(shell pwd)/pkg/kfp/pipeline
-	mkdir -p $(shell pwd)/pkg/kfp/pipeline_upload
-	$(SWAGGER) generate client -f https://raw.githubusercontent.com/kubeflow/pipelines/master/backend/api/swagger/pipeline.upload.swagger.json \
-		--target $(shell pwd)/pkg/kfp/pipeline_upload
-	go mod tidy
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -122,17 +115,6 @@ ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.
 	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
 
-SWAGGER = $(shell pwd)/bin/swagger
-
-.PHONY: swagger
-swagger:
-	$(call go-get-tool,$(SWAGGER),github.com/go-swagger/go-swagger/cmd/swagger@latest)
-
-APISERVER = $(shell pwd)/bin/apiserver
-
-.PHONY: apiserver
-apiserver:
-	$(call go-get-tool,$(APISERVER),github.com/kubeflow/pipelines/backend/src/apiserver@latest)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))

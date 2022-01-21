@@ -1,0 +1,24 @@
+# permissions for end users to edit pipelineversions.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pipelineversion-editor-role
+rules:
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - pipelineversions
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - pipelineversions/status
+  verbs:
+  - get

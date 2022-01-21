@@ -1,0 +1,20 @@
+# permissions for end users to view pipelineversions.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pipelineversion-viewer-role
+rules:
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - pipelineversions
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - pipelineversions/status
+  verbs:
+  - get

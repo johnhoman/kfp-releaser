@@ -32,3 +32,29 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - pipelineversions
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - pipelineversions/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - pipelineversions/status
+  verbs:
+  - get
+  - patch
+  - update

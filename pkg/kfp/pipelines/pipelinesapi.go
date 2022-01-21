@@ -83,7 +83,19 @@ func (p *pipelinesApi) CreateVersion(ctx context.Context, options *CreateVersion
 }
 
 func (p *pipelinesApi) DeleteVersion(ctx context.Context, options *DeleteOptions) error {
-    panic("implement me")
+    _, err := p.GetVersion(ctx, &GetOptions{ID: options.ID})
+    if err != nil {
+        return err
+    }
+    _, err = p.service.DeletePipelineVersion(&ps.DeletePipelineVersionParams{
+        VersionID: options.ID,
+        Context: ctx,
+    }, p.authInfo)
+    if err != nil {
+        // Maybe wrap this
+        return err
+    }
+    return nil
 }
 
 func (p *pipelinesApi) GetVersion(ctx context.Context, options *GetOptions) (*PipelineVersion, error) {

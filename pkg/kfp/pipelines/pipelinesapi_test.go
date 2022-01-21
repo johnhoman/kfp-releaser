@@ -222,12 +222,12 @@ var _ = Describe("PipelinesApi", func() {
 			Expect(pipeline).ToNot(BeNil())
 			version, err := api.CreateVersion(ctx, &pipelines.CreateVersionOptions{
 				PipelineID: pipeline.ID,
-				Name: name,
+				Name: name + "-1",
 				Description: description,
 				Workflow: newWhaleSay(),
 			})
-			Expect(err).Should(HaveOccurred())
-			Expect(pipelines.IsConflict(err)).To(BeTrue())
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(version).ToNot(BeNil())
 
 			Expect(api.DeleteVersion(ctx, &pipelines.DeleteOptions{ID: version.ID})).Should(Succeed())
 		})

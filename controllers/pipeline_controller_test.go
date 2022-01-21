@@ -82,6 +82,44 @@ var _ = Describe("PipelineController", func() {
 			Expect(instance.Finalizers).Should(ContainElement(Finalizer))
 			Expect(instance.ManagedFields[0].Manager).To(Equal(string(FieldOwner)))
 		})
+		It("Should remove the finalizer", func() {
+			instance := &kfpv1alpha1.Pipeline{}
+			instance.SetName("finalized")
+			instance.SetFinalizers([]string{"keep"}) // keeps the object from being deleted
+			it.Eventually().Create(instance).Should(Succeed())
+			instance = &kfpv1alpha1.Pipeline{}
+			it.Eventually().GetWhen(types.NamespacedName{Name: "finalized"}, instance, func(obj client.Object) bool {
+				return len(obj.GetFinalizers()) == 2
+			}).Should(Succeed())
+			Expect(instance.Finalizers).Should(ContainElement(Finalizer))
+			Expect(instance.ManagedFields[0].Manager).To(Equal(string(FieldOwner)))
+
+			it.Expect().Delete(instance).Should(Succeed())
+			instance = &kfpv1alpha1.Pipeline{}
+			it.Eventually().GetWhen(types.NamespacedName{Name: "finalized"}, instance, func(obj client.Object) bool {
+				return len(obj.GetFinalizers()) == 1
+			}).Should(Succeed())
+		})
+		It("Should remove the upstream resource on deletion", func() {
+			instance := &kfpv1alpha1.Pipeline{}
+			instance.SetName("finalized")
+			instance.SetFinalizers([]string{"keep"}) // keeps the object from being deleted
+			it.Eventually().Create(instance).Should(Succeed())
+			instance = &kfpv1alpha1.Pipeline{}
+			it.Eventually().GetWhen(types.NamespacedName{Name: "finalized"}, instance, func(obj client.Object) bool {
+				return len(obj.GetFinalizers()) == 2
+			}).Should(Succeed())
+			Expect(instance.Finalizers).Should(ContainElement(Finalizer))
+			Expect(instance.ManagedFields[0].Manager).To(Equal(string(FieldOwner)))
+
+			it.Expect().Delete(instance).Should(Succeed())
+			instance = &kfpv1alpha1.Pipeline{}
+			it.Eventually().GetWhen(types.NamespacedName{Name: "finalized"}, instance, func(obj client.Object) bool {
+				return len(obj.GetFinalizers()) == 1
+			}).Should(Succeed())
+			_, err := service.Get(it.GetContext(), &kfp.GetOptions{ID: instance.Status.ID})
+			Expect(kfp.IsNotFound(err)).To(BeTrue())
+		})
 	})
 	Context("CreatePipeline", func() {
 		It("Should fill in the status fields", func() {

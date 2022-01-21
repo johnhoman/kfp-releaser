@@ -77,6 +77,20 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// Delete resources
 		if cu.ContainsFinalizer(instance, Finalizer) {
 			// Delete the resource
+			if len(instance.Status.ID) > 0 {
+				_, err := r.Pipelines.Get(ctx, &kfp.GetOptions{ID: instance.Status.ID})
+				if err != nil && !kfp.IsNotFound(err) {
+					return ctrl.Result{}, err
+				}
+				if err == nil {
+					if err := r.Pipelines.Delete(ctx, &kfp.DeleteOptions{ID: instance.Status.ID}); err != nil {
+						if !kfp.IsNotFound(err) {
+							return ctrl.Result{}, err
+						}
+					}
+				}
+			}
+
 			patch := client.MergeFrom(instance.DeepCopy())
 			cu.RemoveFinalizer(instance, Finalizer)
 			if err := k8s.Patch(ctx, instance, patch, FieldOwner); err != nil {

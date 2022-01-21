@@ -18,9 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
-
 
 // PipelineSpec defines the desired state of Pipeline
 type PipelineSpec struct {
@@ -28,13 +26,17 @@ type PipelineSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of Pipeline. Edit pipeline_types.go to remove/update
-	Template runtime.RawExtension  `json:"template,omitempty"`
+	// Template runtime.RawExtension `json:"template,omitempty"`
+	Description string `json:"description"`
 }
 
 // PipelineStatus defines the observed state of Pipeline
 type PipelineStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	ID             string      `json:"pipelineId,omitempty"`
+	DefaultVersion string      `json:"defaultVersionId,omitempty"`
+	CreatedAt      metav1.Time `json:"createdAt,omitempty"`
 }
 
 //+kubebuilder:object:root=true

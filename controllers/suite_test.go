@@ -79,3 +79,40 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
+
+func workflow() map[string]interface{} {
+	content := map[string]interface{}{
+		"apiVersion": "argoproj.io/v1alpha1",
+		"kind":       "Workflow",
+		"metadata": map[string]interface{}{
+			"name": "whalesay",
+		},
+		"spec": map[string]interface{}{
+			"entrypoint": "whalesay",
+			"arguments": map[string]interface{}{
+				"parameters": []interface{}{
+					map[string]interface{}{
+						"name":  "name",
+						"value": "Jack",
+					},
+				},
+			},
+			"templates": []interface{}{
+				map[string]interface{}{
+					"name": "whalesay",
+					"inputs": map[string]interface{}{
+						"parameters": []interface{}{
+							map[string]interface{}{"name": "name"},
+						},
+					},
+					"container": map[string]interface{}{
+						"image":   "docker/whalesay",
+						"command": []string{"cowsay"},
+						"args":    []string{"Hello", "{{inputs.parameters.name}}"},
+					},
+				},
+			},
+		},
+	}
+	return content
+}

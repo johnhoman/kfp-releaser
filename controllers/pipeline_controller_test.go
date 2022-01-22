@@ -13,43 +13,6 @@ import (
 	"github.com/johnhoman/go-kfp/fake"
 )
 
-func workflow() map[string]interface{} {
-	content := map[string]interface{}{
-		"apiVersion": "argoproj.io/v1alpha1",
-		"kind":       "Workflow",
-		"metadata": map[string]interface{}{
-			"name": "whalesay",
-		},
-		"spec": map[string]interface{}{
-			"entrypoint": "whalesay",
-			"arguments": map[string]interface{}{
-				"parameters": []interface{}{
-					map[string]interface{}{
-						"name":  "name",
-						"value": "Jack",
-					},
-				},
-			},
-			"templates": []interface{}{
-				map[string]interface{}{
-					"name": "whalesay",
-					"inputs": map[string]interface{}{
-						"parameters": []interface{}{
-							map[string]interface{}{"name": "name"},
-						},
-					},
-					"container": map[string]interface{}{
-						"image":   "docker/whalesay",
-						"command": []string{"cowsay"},
-						"args":    []string{"Hello", "{{inputs.parameters.name}}"},
-					},
-				},
-			},
-		},
-	}
-	return content
-}
-
 var _ = Describe("PipelineController", func() {
 	var it manager.IntegrationTest
 	var service kfp.Pipelines

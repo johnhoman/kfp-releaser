@@ -48,6 +48,7 @@ type PipelineReconciler struct {
 	BlankWorkflow map[string]interface{}
 }
 
+//+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelineversions,verbs=get;list;watch
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelines,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelines/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelines/finalizers,verbs=update
@@ -77,17 +78,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// Delete resources
 		if cu.ContainsFinalizer(instance, Finalizer) {
 			// Delete the resource
-			if len(instance.Status.ID) > 0 {
-				_, err := r.Pipelines.Get(ctx, &kfp.GetOptions{ID: instance.Status.ID})
-				if err != nil && !kfp.IsNotFound(err) {
+			if err := r.Pipelines.Delete(ctx, &kfp.DeleteOptions{ID: instance.Status.ID}); err != nil {
+				if !kfp.IsNotFound(err) {
 					return ctrl.Result{}, err
-				}
-				if err == nil {
-					if err := r.Pipelines.Delete(ctx, &kfp.DeleteOptions{ID: instance.Status.ID}); err != nil {
-						if !kfp.IsNotFound(err) {
-							return ctrl.Result{}, err
-						}
-					}
 				}
 			}
 
@@ -118,20 +111,21 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	name := instance.GetNamespace() + "-" + instance.GetName()
 	pipeline, err := r.Pipelines.Get(ctx, &kfp.GetOptions{Name: name})
 	if err != nil {
-		if pipelines.IsNotFound(err) {
-			pipeline, err = r.Pipelines.Create(ctx, &kfp.CreateOptions{
-				Name:        name,
-				Description: instance.Spec.Description,
-				Workflow:    r.BlankWorkflow,
-			})
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			// Remove the blank after the pipeline stub is created
-			err := r.Pipelines.DeleteVersion(ctx, &kfp.DeleteVersionOptions{ID: pipeline.ID})
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+		if !pipelines.IsNotFound(err) {
+			return ctrl.Result{}, err
+		}
+		pipeline, err = r.Pipelines.Create(ctx, &kfp.CreateOptions{
+			Name:        name,
+			Description: instance.Spec.Description,
+			Workflow:    r.BlankWorkflow,
+		})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		// Remove the blank after the pipeline stub is created
+		err := r.Pipelines.DeleteVersion(ctx, &kfp.DeleteVersionOptions{ID: pipeline.ID})
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 	old := instance.DeepCopy()
@@ -139,7 +133,8 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	instance.Status.DefaultVersion = pipeline.DefaultVersionID
 	instance.Status.CreatedAt = metav1.NewTime(pipeline.CreatedAt)
 	if !reflect.DeepEqual(instance.Status, old.Status) {
-		if err := k8s.Status().Update(ctx, instance); err != nil {
+		patch := client.MergeFrom(old)
+		if err := k8s.Status().Patch(ctx, instance, patch); err != nil {
 			return ctrl.Result{}, err
 		}
 	}

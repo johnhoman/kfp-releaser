@@ -18,12 +18,21 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	cu "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/johnhoman/go-kfp"
 	kfpv1alpha1 "github.com/johnhoman/kfp-releaser/api/v1alpha1"
 )
 
@@ -31,25 +40,121 @@ import (
 type PipelineVersionReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	record.EventRecorder
+
+	Pipelines kfp.Pipelines
 }
 
+const (
+	VersionFinalizer              = "kfp.jackhoman.com/delete-pipeline-version"
+	ReasonPipelineNotFound        = "PipelineNotFound"
+	ReasonPipelineVersionCreated  = "Created"
+	ReasonPipelineVersionDeleted  = "Deleted"
+	ReasonPipelineVersionConflict = "Conflict"
+	ReasonAPIError                = "APIError"
+)
+
+//+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelines,verbs=get;list;watch
+//+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelines/status,verbs=get
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelineversions,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelineversions/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelineversions/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the PipelineVersion object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *PipelineVersionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	// This is going to be kind of a weird controller -- this should
+	// be owned by the pipeline that controls it
 
-	// TODO(user): your logic here
+	logger := log.FromContext(ctx)
+
+	k8s := client.NewNamespacedClient(r.Client, req.Namespace)
+
+	instance := &kfpv1alpha1.PipelineVersion{}
+	if err := k8s.Get(ctx, req.NamespacedName, instance); err != nil {
+		logger.Info("instance not found", "error", err.Error())
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if !instance.GetDeletionTimestamp().IsZero() {
+		logger.Info("Deleting pipeline resource")
+		// Under deletion
+		if cu.ContainsFinalizer(instance, VersionFinalizer) {
+			err := r.Pipelines.DeleteVersion(ctx, &kfp.DeleteVersionOptions{ID: instance.Status.ID})
+			if err != nil && !kfp.IsNotFound(err) {
+				return ctrl.Result{}, err
+			}
+			logger.Info("Deleted pipeline resource")
+			patch := client.MergeFrom(instance.DeepCopy())
+			cu.RemoveFinalizer(instance, VersionFinalizer)
+			if err := k8s.Patch(ctx, instance, patch, FieldOwner); err != nil {
+				return ctrl.Result{}, err
+			}
+			logger.Info("Removed finalizer")
+		}
+		return ctrl.Result{}, nil
+	}
+	if !cu.ContainsFinalizer(instance, Finalizer) {
+		patch := &unstructured.Unstructured{Object: map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"finalizers": []string{VersionFinalizer},
+			},
+		}}
+		patch.SetGroupVersionKind(instance.GroupVersionKind())
+		patch.SetName(instance.GetName())
+		if err := k8s.Patch(ctx, patch, client.Apply, FieldOwner, client.ForceOwnership); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	pipeline := &kfpv1alpha1.Pipeline{}
+	key := types.NamespacedName{Name: instance.Spec.PipelineRef.Name, Namespace: instance.GetNamespace()}
+	if err := k8s.Get(ctx, key, pipeline); err != nil {
+		r.Event(instance, corev1.EventTypeWarning, ReasonPipelineNotFound, fmt.Sprintf(
+			"Could not find pipeline %s", instance.Spec.PipelineRef.Name,
+		))
+		return ctrl.Result{}, err
+	}
+	version, err := r.Pipelines.GetVersion(ctx, &kfp.GetVersionOptions{
+		Name:       instance.GetName(),
+		PipelineID: pipeline.Status.ID,
+	})
+	if err != nil {
+		if !kfp.IsNotFound(err) {
+			return ctrl.Result{}, err
+		}
+		var m map[string]interface{}
+		if err := json.Unmarshal(instance.Spec.Workflow.Raw, &m); err != nil {
+			return ctrl.Result{}, err
+		}
+		out, err := r.Pipelines.CreateVersion(ctx, &kfp.CreateVersionOptions{
+			PipelineID:  pipeline.Status.ID,
+			Name:        instance.GetName(),
+			Description: instance.Spec.Description,
+			Workflow:    m,
+		})
+		if err != nil {
+			r.Event(instance, corev1.EventTypeWarning, ReasonAPIError, fmt.Sprintf(
+				"Unknown error occured %s", err.Error(),
+			))
+			return ctrl.Result{}, err
+		}
+		r.Event(instance, corev1.EventTypeNormal, ReasonPipelineVersionCreated, fmt.Sprintf(
+			"Created pipeline version %s for pipeline %s", out.ID, pipeline.Status.ID,
+		))
+		*version = *out
+	}
+	old := instance.DeepCopy()
+	instance.Status.ID = version.ID
+	instance.Status.PipelineID = version.PipelineID
+	if !reflect.DeepEqual(old.Status, instance.Status) {
+		logger.Info("Updating status")
+		patch := client.MergeFrom(old)
+		if err := k8s.Status().Patch(ctx, instance, patch); err != nil {
+			return ctrl.Result{}, err
+		}
+		logger.Info("Status updated")
+	}
 
 	return ctrl.Result{}, nil
 }

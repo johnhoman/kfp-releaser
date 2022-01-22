@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -30,13 +31,17 @@ type PipelineVersionSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of PipelineVersion. Edit pipelineversion_types.go to remove/update
+	Description string                      `json:"description,omitempty"`
 	PipelineRef corev1.LocalObjectReference `json:"pipeline"`
+	Workflow    runtime.RawExtension        `json:"workflow"`
 }
 
 // PipelineVersionStatus defines the observed state of PipelineVersion
 type PipelineVersionStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	PipelineID string `json:"pipelineId,omitempty"`
+	ID         string `json:"id,omitempty"`
 }
 
 //+kubebuilder:object:root=true

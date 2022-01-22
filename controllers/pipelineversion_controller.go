@@ -115,8 +115,15 @@ func (r *PipelineVersionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		))
 		return ctrl.Result{}, err
 	}
+	name := instance.GetName()
+	if len(instance.GetAnnotations()) > 0 {
+		value, ok := instance.GetAnnotations()["kfp.jackhoman.com/pipeline-version"]
+		if ok {
+			name = value
+		}
+	}
 	version, err := r.Pipelines.GetVersion(ctx, &kfp.GetVersionOptions{
-		Name:       instance.GetName(),
+		Name:       name,
 		PipelineID: pipeline.Status.ID,
 	})
 	if err != nil {
@@ -129,7 +136,7 @@ func (r *PipelineVersionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 		out, err := r.Pipelines.CreateVersion(ctx, &kfp.CreateVersionOptions{
 			PipelineID:  pipeline.Status.ID,
-			Name:        instance.GetName(),
+			Name:        name,
 			Description: instance.Spec.Description,
 			Workflow:    m,
 		})

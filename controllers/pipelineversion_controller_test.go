@@ -113,5 +113,35 @@ var _ = Describe("PipelineVersionController", func() {
 			Expect(out).ToNot(BeNil())
 			Expect(out.PipelineID).To(Equal(pipeline.Status.ID))
 		})
+		It("Should create a pipeline version with a specified name", func() {
+			pipeline := &kfpv1alpha1.Pipeline{}
+			pipeline.SetName("create-version")
+			it.Eventually().Create(pipeline).Should(Succeed())
+			pipeline = &kfpv1alpha1.Pipeline{}
+			it.Eventually().GetWhen(types.NamespacedName{Name: "create-version"}, pipeline, func(obj client.Object) bool {
+				return len(pipeline.Status.ID) > 0
+			}).Should(Succeed())
+
+			version := &kfpv1alpha1.PipelineVersion{}
+			version.SetName("create-version-v1")
+			version.SetAnnotations(map[string]string{"kfp.jackhoman.com/pipeline-version": "1.0.1"})
+			version.Spec.PipelineRef.Name = "create-version"
+			version.Spec.Workflow.Raw = raw
+			version.Spec.Description = "version 1.0.1"
+			it.Eventually().Create(version).Should(Succeed())
+			version = &kfpv1alpha1.PipelineVersion{}
+			it.Eventually().GetWhen(types.NamespacedName{Name: "create-version-v1"}, version, func(obj client.Object) bool {
+				return len(obj.(*kfpv1alpha1.PipelineVersion).Status.ID) > 0
+			}).Should(Succeed())
+
+			out, err := service.GetVersion(it.GetContext(), &kfp.GetVersionOptions{
+				Name:       "1.0.1",
+				PipelineID: pipeline.Status.ID,
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out).ToNot(BeNil())
+			Expect(out.PipelineID).To(Equal(pipeline.Status.ID))
+			Expect(out.ID).To(Equal(version.Status.ID))
+		})
 	})
 })

@@ -48,42 +48,83 @@ var _ = Describe("PipelineVersionController", func() {
 	})
 	AfterEach(func() { it.StopManager() })
 	Context("Finalization", func() {
-		It("Adds a finalizer", func() {
-			version := &kfpv1alpha1.PipelineVersion{}
-			version.SetName("un-finalized")
-			version.Spec.Workflow.Raw = raw
-			version.Spec.PipelineRef.Name = "unknown"
-			it.Eventually().Create(version).Should(Succeed())
-			version = &kfpv1alpha1.PipelineVersion{}
-			it.Eventually().GetWhen(types.NamespacedName{Name: "un-finalized"}, version, func(obj client.Object) bool {
-				return len(obj.GetFinalizers()) == 1
-			}).Should(Succeed())
-			Expect(version.GetFinalizers()).To(ContainElement(VersionFinalizer))
-			Expect(version.GetManagedFields()[0].Manager).To(Equal(string(FieldOwner)))
+		When("The finalizer is missing from the PipelineVersion", func() {
+			It("Should add a finalizer", func() {
+				version := &kfpv1alpha1.PipelineVersion{}
+				version.SetName("un-finalized")
+				version.Spec.Workflow.Raw = raw
+				version.Spec.PipelineRef.Name = "unknown"
+				it.Eventually().Create(version).Should(Succeed())
+				version = &kfpv1alpha1.PipelineVersion{}
+				it.Eventually().GetWhen(types.NamespacedName{Name: "un-finalized"}, version, func(obj client.Object) bool {
+					return len(obj.GetFinalizers()) == 1
+				}).Should(Succeed())
+				Expect(version.GetFinalizers()).To(ContainElement(VersionFinalizer))
+				Expect(version.GetManagedFields()[0].Manager).To(Equal(string(FieldOwner)))
+			})
 		})
-		It("Removes a finalizer when no upstream resource exists", func() {
-			version := &kfpv1alpha1.PipelineVersion{}
-			version.Spec.Workflow.Raw = raw
-			version.Spec.PipelineRef.Name = "unknown"
-			version.SetName("un-finalized")
-			version.SetFinalizers([]string{"keep"})
-			it.Eventually().Create(version).Should(Succeed())
-			version = &kfpv1alpha1.PipelineVersion{}
-			it.Eventually().GetWhen(types.NamespacedName{Name: "un-finalized"}, version, func(obj client.Object) bool {
-				return len(obj.GetFinalizers()) == 2
-			}).Should(Succeed())
-			Expect(version.GetFinalizers()).To(ContainElement(VersionFinalizer))
+		When("No upstream resource exists", func() {
+			It("Should remove the finalizer", func() {
+				name := "no-resource-exists"
+				versionName := "no-resource-exists-1"
+				pipeline := &kfpv1alpha1.Pipeline{}
+				pipeline.SetName(name)
+				it.Eventually().Create(pipeline).Should(Succeed())
+				pipeline = &kfpv1alpha1.Pipeline{}
+				it.Eventually().GetWhen(types.NamespacedName{Name: name}, pipeline, func(obj client.Object) bool {
+					return len(pipeline.Status.ID) > 0
+				}).Should(Succeed())
 
-			version = &kfpv1alpha1.PipelineVersion{}
-			version.SetName("un-finalized")
-			it.Expect().Delete(version).Should(Succeed())
-			it.Eventually().GetWhen(types.NamespacedName{Name: "un-finalized"}, version, func(obj client.Object) bool {
-				return len(obj.GetFinalizers()) == 1
-			}).Should(Succeed())
-			Expect(version.GetFinalizers()).NotTo(ContainElement(VersionFinalizer))
+				version := &kfpv1alpha1.PipelineVersion{}
+				version.Spec.Workflow.Raw = raw
+				version.Spec.PipelineRef.Name = name
+				version.SetName(versionName)
+				version.SetFinalizers([]string{"keep"})
+				it.Eventually().Create(version).Should(Succeed())
+
+				version = &kfpv1alpha1.PipelineVersion{}
+				it.Eventually().GetWhen(types.NamespacedName{Name: versionName}, version, func(obj client.Object) bool {
+					return len(obj.GetFinalizers()) == 2
+				}).Should(Succeed())
+				Expect(version.GetFinalizers()).To(ContainElement(VersionFinalizer))
+
+				// Deleting the upstream resource should allow the controller
+				// to safely remove the finalizer
+				Expect(service.DeleteVersion(
+					it.GetContext(), &kfp.DeleteVersionOptions{ID: version.Status.ID}),
+				).Should(Succeed())
+
+				version = &kfpv1alpha1.PipelineVersion{}
+				version.SetName(versionName)
+				it.Expect().Delete(version).Should(Succeed())
+				it.Eventually().GetWhen(types.NamespacedName{Name: versionName}, version, func(obj client.Object) bool {
+					return len(obj.GetFinalizers()) == 1
+				}).Should(Succeed())
+				Expect(version.GetFinalizers()).NotTo(ContainElement(VersionFinalizer))
+			})
 		})
-		It("Removes the version resource", func() {
-			Skip("Create not implemented")
+		When("The upstream resource exists", func() {
+			It("Should remove the resource", func() {
+				pipeline := &kfpv1alpha1.Pipeline{}
+				pipeline.SetName("create-version")
+				it.Eventually().Create(pipeline).Should(Succeed())
+				pipeline = &kfpv1alpha1.Pipeline{}
+				it.Eventually().GetWhen(types.NamespacedName{Name: "create-version"}, pipeline, func(obj client.Object) bool {
+					return len(pipeline.Status.ID) > 0
+				}).Should(Succeed())
+
+				version := &kfpv1alpha1.PipelineVersion{}
+				version.SetName("create-version-v1")
+				version.SetLabels(map[string]string{"kfp.jackhoman.com/pipeline-version": "1.0.1"})
+				version.Spec.PipelineRef.Name = "create-version"
+				version.Spec.Workflow.Raw = raw
+				version.Spec.Description = "version 1.0.1"
+				it.Eventually().Create(version).Should(Succeed())
+				version = &kfpv1alpha1.PipelineVersion{}
+				it.Eventually().GetWhen(types.NamespacedName{Name: "create-version-v1"}, version, func(obj client.Object) bool {
+					return len(obj.(*kfpv1alpha1.PipelineVersion).Status.ID) > 0
+				}).Should(Succeed())
+			})
 		})
 	})
 	Context("CreateVersion", func() {

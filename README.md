@@ -3,8 +3,12 @@
 The release workflow needs a few components to effectively manage pipeline deployments
 from git.
 
-Since every in a deployment should be tracked, trigger and provisioned from version control
-(not necessary required but a very strong opinion in have) we'll use gitops to do the deployments.
+Since every deployment should be tracked, trigger and provisioned from version control
+the controller was designed with GitOps in mind so a typical workflow would use the kfp [compiler] to create the
+workflow (pipeline spec), [ytt](https://carvel.dev/ytt/) to render the `pipelineversions.kfp.jackhoman.com` manifest, git
+to store the manifest and argo to release the manifest. Once the manifest reaches the cluster the controller
+will handle syncing the pipelines with [Kubeflow].
+
 
 ## Setup
 ### Install Argo
@@ -112,3 +116,4 @@ spec:
 
 [Controller]: https://kubernetes.io/docs/concepts/architecture/controller
 [Kubeflow]: https://kubeflow.org
+[compiler]: https://kubeflow-pipelines.readthedocs.io/en/latest/source/kfp.compiler.html

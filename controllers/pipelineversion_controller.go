@@ -19,18 +19,19 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"reflect"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/tools/record"
+	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	cu "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/johnhoman/go-kfp"
 	kfpv1alpha1 "github.com/johnhoman/kfp-releaser/api/v1alpha1"
@@ -116,12 +117,6 @@ func (r *PipelineVersionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 	name := instance.GetName()
-	if len(instance.GetAnnotations()) > 0 {
-		value, ok := instance.GetAnnotations()["kfp.jackhoman.com/pipeline-version"]
-		if ok {
-			name = value
-		}
-	}
 	version, err := r.Pipelines.GetVersion(ctx, &kfp.GetVersionOptions{
 		Name:       name,
 		PipelineID: pipeline.Status.ID,
@@ -151,6 +146,7 @@ func (r *PipelineVersionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		))
 		*version = *out
 	}
+
 	old := instance.DeepCopy()
 	instance.Status.ID = version.ID
 	instance.Status.Name = version.Name
@@ -171,5 +167,22 @@ func (r *PipelineVersionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 func (r *PipelineVersionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kfpv1alpha1.PipelineVersion{}).
+		Watches(
+			&source.Kind{Type: &kfpv1alpha1.Pipeline{}},
+			handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []ctrl.Request {
+				pipeline, ok := obj.(*kfpv1alpha1.Pipeline)
+				if ok {
+					versions := make([]ctrl.Request, 0, len(pipeline.Status.Versions))
+					for _, version := range pipeline.Status.Versions {
+						versions = append(versions, ctrl.Request{
+							NamespacedName: types.NamespacedName{Name: version.Name, Namespace: pipeline.GetNamespace()},
+						})
+					}
+					return versions
+				}
+
+				return []ctrl.Request{}
+			}),
+		).
 		Complete(r)
 }

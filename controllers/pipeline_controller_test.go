@@ -80,8 +80,10 @@ var _ = Describe("PipelineController", func() {
 			it.Eventually().GetWhen(types.NamespacedName{Name: "finalized"}, instance, func(obj client.Object) bool {
 				return len(obj.GetFinalizers()) == 1
 			}).Should(Succeed())
-			_, err := service.Get(it.GetContext(), &kfp.GetOptions{ID: instance.Status.ID})
-			Expect(kfp.IsNotFound(err)).To(BeTrue())
+			Eventually(func() bool {
+				_, err := service.Get(it.GetContext(), &kfp.GetOptions{ID: instance.Status.ID})
+				return kfp.IsNotFound(err)
+			}).Should(BeTrue())
 		})
 	})
 	Context("CreatePipeline", func() {

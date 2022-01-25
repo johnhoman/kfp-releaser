@@ -30,9 +30,10 @@ type PipelineVersionSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of PipelineVersion. Edit pipelineversion_types.go to remove/update
-	Description string               `json:"description,omitempty"`
-	Pipeline    string               `json:"pipeline"`
-	Workflow    runtime.RawExtension `json:"workflow"`
+	Description string `json:"description,omitempty"`
+	Pipeline    string `json:"pipeline"`
+	//+kubebuilder:pruning:PreserveUnknownFields
+	Workflow runtime.RawExtension `json:"workflow"`
 }
 
 // PipelineVersionStatus defines the observed state of PipelineVersion
@@ -47,7 +48,7 @@ type PipelineVersionStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.name`
-//+kubebuilder:printcolumn:name="PipelineName",type=string,JSONPath=`.spec.pipeline.name`
+//+kubebuilder:printcolumn:name="PipelineName",type=string,JSONPath=`.spec.pipeline`
 //+kubebuilder:printcolumn:name="PipelineId",type=string,JSONPath=`.status.pipelineId`
 
 // PipelineVersion is the Schema for the pipelineversions API

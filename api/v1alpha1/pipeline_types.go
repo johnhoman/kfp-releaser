@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -34,13 +35,15 @@ type PipelineSpec struct {
 type PipelineStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	ID             string      `json:"pipelineId,omitempty"`
-	DefaultVersion string      `json:"defaultVersionId,omitempty"`
-	CreatedAt      metav1.Time `json:"createdAt,omitempty"`
+	ID             string                        `json:"pipelineId,omitempty"`
+	DefaultVersion string                        `json:"defaultVersionId,omitempty"`
+	CreatedAt      metav1.Time                   `json:"createdAt,omitempty"`
+	Versions       []corev1.LocalObjectReference `json:"versions"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="PipelineId",type=string,JSONPath=`.status.pipelineId`
 
 // Pipeline is the Schema for the pipelines API
 type Pipeline struct {

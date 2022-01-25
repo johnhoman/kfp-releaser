@@ -21,10 +21,12 @@ import (
 	"github.com/johnhoman/go-kfp"
 	"github.com/johnhoman/go-kfp/pipelines"
 	kfpv1alpha1 "github.com/johnhoman/kfp-releaser/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sort"
 )
 
 const (
@@ -43,6 +46,7 @@ const (
 type PipelineReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	record.EventRecorder
 
 	Pipelines     kfp.Pipelines
 	BlankWorkflow map[string]interface{}
@@ -112,6 +116,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	pipeline, err := r.Pipelines.Get(ctx, &kfp.GetOptions{Name: name})
 	if err != nil {
 		if !pipelines.IsNotFound(err) {
+			r.Event(instance, corev1.EventTypeWarning, "GetPipelineError", err.Error())
 			return ctrl.Result{}, err
 		}
 		pipeline, err = r.Pipelines.Create(ctx, &kfp.CreateOptions{
@@ -120,18 +125,41 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			Workflow:    r.BlankWorkflow,
 		})
 		if err != nil {
+			if kfp.IsConflict(err) {
+				// This shouldn't come down this path but for some reason it has been
+				// probably because kubeflow doesn't really work
+				r.Eventf(instance, corev1.EventTypeWarning, "Conflict", "Pipeline %s already exists", name)
+				return ctrl.Result{}, nil
+			}
 			return ctrl.Result{}, err
 		}
 		// Remove the blank after the pipeline stub is created
 		err := r.Pipelines.DeleteVersion(ctx, &kfp.DeleteVersionOptions{ID: pipeline.ID})
 		if err != nil {
+			r.Event(instance, corev1.EventTypeWarning, "DeleteVersionError", err.Error())
 			return ctrl.Result{}, err
 		}
+	}
+	// Own all versions
+	versionList := &kfpv1alpha1.PipelineVersionList{}
+	if err := k8s.List(ctx, versionList, client.MatchingFields{"spec.pipeline": instance.GetName()}); err != nil {
+		r.Eventf(instance, corev1.EventTypeWarning, "ListVersionsFailed", "could not list versions %s", err.Error())
+		return ctrl.Result{}, err
+	}
+	versions := make([]string, 0, len(versionList.Items))
+	for _, version := range versionList.Items {
+		versions = append(versions, version.GetName())
+	}
+	sort.Sort(sort.StringSlice(versions))
+	versionRefs := make([]corev1.LocalObjectReference, 0, len(versions))
+	for _, name := range versions {
+		versionRefs = append(versionRefs, corev1.LocalObjectReference{Name: name})
 	}
 	old := instance.DeepCopy()
 	instance.Status.ID = pipeline.ID
 	instance.Status.DefaultVersion = pipeline.DefaultVersionID
 	instance.Status.CreatedAt = metav1.NewTime(pipeline.CreatedAt)
+	instance.Status.Versions = versionRefs
 	if !reflect.DeepEqual(instance.Status, old.Status) {
 		patch := client.MergeFrom(old)
 		if err := k8s.Status().Patch(ctx, instance, patch); err != nil {
@@ -144,20 +172,29 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &kfpv1alpha1.PipelineVersion{}, "spec.pipeline", func(obj client.Object) []string {
+		version, ok := obj.(*kfpv1alpha1.PipelineVersion)
+		if !ok {
+			return []string{}
+		}
+		return []string{version.Spec.Pipeline}
+	}); err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kfpv1alpha1.Pipeline{}).
 		Watches(
 			&source.Kind{Type: &kfpv1alpha1.PipelineVersion{}},
 			handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []ctrl.Request {
 				version, ok := obj.(*kfpv1alpha1.PipelineVersion)
-				if !ok {
-					return []ctrl.Request{}
+				if ok {
+					return []ctrl.Request{{NamespacedName: types.NamespacedName{
+						Name:      version.Spec.Pipeline,
+						Namespace: version.GetNamespace()},
+					}}
 				}
-				ref := version.Spec.Pipeline
-				return []ctrl.Request{{NamespacedName: types.NamespacedName{
-					Name:      ref,
-					Namespace: version.GetNamespace(),
-				}}}
+
+				return []ctrl.Request{}
 			}),
 		).
 		Complete(r)

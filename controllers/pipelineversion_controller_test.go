@@ -115,7 +115,6 @@ var _ = Describe("PipelineVersionController", func() {
 
 				version := &kfpv1alpha1.PipelineVersion{}
 				version.SetName("create-version-v1")
-				version.SetAnnotations(map[string]string{"kfp.jackhoman.com/pipeline-version": "1.0.1"})
 				version.Spec.Pipeline = "create-version"
 				version.Spec.Workflow.Raw = raw
 				version.Spec.Description = "version 1.0.1"
@@ -124,7 +123,7 @@ var _ = Describe("PipelineVersionController", func() {
 				it.Eventually().GetWhen(types.NamespacedName{Name: "create-version-v1"}, version, func(obj client.Object) bool {
 					return len(obj.(*kfpv1alpha1.PipelineVersion).Status.ID) > 0
 				}).Should(Succeed())
-				Expect(version.Status.Name).To(Equal("1.0.1"))
+				Expect(version.Status.Name).To(Equal("create-version-v1"))
 			})
 		})
 	})
@@ -177,7 +176,7 @@ var _ = Describe("PipelineVersionController", func() {
 			}).Should(Succeed())
 
 			out, err := service.GetVersion(it.GetContext(), &kfp.GetVersionOptions{
-				Name:       "1.0.1",
+				Name:       "create-version-v1",
 				PipelineID: pipeline.Status.ID,
 			})
 			Expect(err).ToNot(HaveOccurred())

@@ -20,16 +20,20 @@ import (
 	"flag"
 	"os"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	// to ensure that exec-entrypoint and run can make use of them.
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
+	httptransport "github.com/go-openapi/runtime/client"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	// to ensure that exec-entrypoint and run can make use of them.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"github.com/johnhoman/go-kfp"
+	"github.com/johnhoman/go-kfp/api/pipeline/client/pipeline_service"
+	"github.com/johnhoman/go-kfp/api/pipeline_upload/client/pipeline_upload_service"
 
 	kfpv1alpha1 "github.com/johnhoman/kfp-releaser/api/v1alpha1"
 	"github.com/johnhoman/kfp-releaser/controllers"
@@ -46,6 +50,47 @@ func init() {
 
 	utilruntime.Must(kfpv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
+}
+
+type UploadService = pipeline_upload_service.ClientService
+type PipelineService = pipeline_service.ClientService
+
+func newWhaleSay() map[string]interface{} {
+	// Not sure if the name actually matters -- might be able to swap it for a uuid
+	content := map[string]interface{}{
+		"apiVersion": "argoproj.io/v1alpha1",
+		"kind":       "Workflow",
+		"metadata": map[string]interface{}{
+			"name": "whalesay",
+		},
+		"spec": map[string]interface{}{
+			"entrypoint": "whalesay",
+			"arguments": map[string]interface{}{
+				"parameters": []interface{}{
+					map[string]interface{}{
+						"name":  "name",
+						"value": "Jack",
+					},
+				},
+			},
+			"templates": []interface{}{
+				map[string]interface{}{
+					"name": "whalesay",
+					"inputs": map[string]interface{}{
+						"parameters": []interface{}{
+							map[string]interface{}{"name": "name"},
+						},
+					},
+					"container": map[string]interface{}{
+						"image":   "docker/whalesay",
+						"command": []string{"cowsay"},
+						"args":    []string{"Hello", "{{inputs.parameters.name}}"},
+					},
+				},
+			},
+		},
+	}
+	return content
 }
 
 func main() {
@@ -78,16 +123,30 @@ func main() {
 		os.Exit(1)
 	}
 
+	transport := httptransport.New("localhost:8888", "", []string{"http"})
+	pipelines := struct {
+		UploadService
+		PipelineService
+	}{
+		UploadService:   pipeline_upload_service.New(transport, nil),
+		PipelineService: pipeline_service.New(transport, nil),
+	}
+
 	if err = (&controllers.PipelineReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		Pipelines:     kfp.New(pipelines, nil),
+		BlankWorkflow: newWhaleSay(),
+		EventRecorder: mgr.GetEventRecorderFor("kfp.jackhoman.com"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Pipeline")
 		os.Exit(1)
 	}
 	if err = (&controllers.PipelineVersionReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		Pipelines:     kfp.New(pipelines, nil),
+		EventRecorder: mgr.GetEventRecorderFor("kfp.jackhoman.com"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PipelineVersion")
 		os.Exit(1)

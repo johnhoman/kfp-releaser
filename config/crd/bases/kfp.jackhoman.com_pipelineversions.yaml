@@ -20,7 +20,7 @@ spec:
     - jsonPath: .status.name
       name: Version
       type: string
-    - jsonPath: .spec.pipeline.name
+    - jsonPath: .spec.pipeline
       name: PipelineName
       type: string
     - jsonPath: .status.pipelineId
@@ -54,6 +54,7 @@ spec:
                 type: string
               workflow:
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
             required:
             - pipeline
             - workflow

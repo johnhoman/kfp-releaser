@@ -1,7 +1,7 @@
 apiVersion: kfp.jackhoman.com/v1alpha1
 kind: Pipeline
 metadata:
-  name: cowsay
+  name: cowsay-v1
 spec:
   description: Whalesay pipeline
 ---

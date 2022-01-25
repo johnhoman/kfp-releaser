@@ -15,7 +15,7 @@ metadata:
     kfp.jackhoman.com/pipeline-version: "1.0.0"
 spec:
   pipeline: whalesay
-  template:
+  workflow:
     apiVersion: argoproj.io/v1alpha1
     kind: Workflow
     metadata:

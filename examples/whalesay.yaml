@@ -2,15 +2,13 @@ apiVersion: kfp.jackhoman.com/v1alpha1
 kind: Pipeline
 metadata:
   name: whalesay
-  namespace: kubeflow
 spec:
   description: Whalesay pipeline
 ---
 apiVersion: kfp.jackhoman.com/v1alpha1
 kind: PipelineVersion
 metadata:
-  generateName: whalesay-
-  namespace: kubeflow
+  name: whalesay-v1
   annotations:
     kfp.jackhoman.com/pipeline-version: "1.0.0"
 spec:

@@ -108,10 +108,10 @@ func (r *PipelineVersionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	pipeline := &kfpv1alpha1.Pipeline{}
-	key := types.NamespacedName{Name: instance.Spec.PipelineRef.Name, Namespace: instance.GetNamespace()}
+	key := types.NamespacedName{Name: instance.Spec.Pipeline, Namespace: instance.GetNamespace()}
 	if err := k8s.Get(ctx, key, pipeline); err != nil {
 		r.Event(instance, corev1.EventTypeWarning, ReasonPipelineNotFound, fmt.Sprintf(
-			"Could not find pipeline %s", instance.Spec.PipelineRef.Name,
+			"Could not find pipeline %s", instance.Spec.Pipeline,
 		))
 		return ctrl.Result{}, err
 	}
@@ -153,6 +153,7 @@ func (r *PipelineVersionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 	old := instance.DeepCopy()
 	instance.Status.ID = version.ID
+	instance.Status.Name = version.Name
 	instance.Status.PipelineID = version.PipelineID
 	if !reflect.DeepEqual(old.Status, instance.Status) {
 		logger.Info("Updating status")

@@ -153,7 +153,7 @@ func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				if !ok {
 					return []ctrl.Request{}
 				}
-				ref := version.Spec.PipelineRef.Name
+				ref := version.Spec.Pipeline
 				return []ctrl.Request{{NamespacedName: types.NamespacedName{
 					Name:      ref,
 					Namespace: version.GetNamespace(),

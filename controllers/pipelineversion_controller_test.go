@@ -53,7 +53,7 @@ var _ = Describe("PipelineVersionController", func() {
 				version := &kfpv1alpha1.PipelineVersion{}
 				version.SetName("un-finalized")
 				version.Spec.Workflow.Raw = raw
-				version.Spec.PipelineRef.Name = "unknown"
+				version.Spec.Pipeline = "unknown"
 				it.Eventually().Create(version).Should(Succeed())
 				version = &kfpv1alpha1.PipelineVersion{}
 				it.Eventually().GetWhen(types.NamespacedName{Name: "un-finalized"}, version, func(obj client.Object) bool {
@@ -77,7 +77,7 @@ var _ = Describe("PipelineVersionController", func() {
 
 				version := &kfpv1alpha1.PipelineVersion{}
 				version.Spec.Workflow.Raw = raw
-				version.Spec.PipelineRef.Name = name
+				version.Spec.Pipeline = name
 				version.SetName(versionName)
 				version.SetFinalizers([]string{"keep"})
 				it.Eventually().Create(version).Should(Succeed())
@@ -115,8 +115,8 @@ var _ = Describe("PipelineVersionController", func() {
 
 				version := &kfpv1alpha1.PipelineVersion{}
 				version.SetName("create-version-v1")
-				version.SetLabels(map[string]string{"kfp.jackhoman.com/pipeline-version": "1.0.1"})
-				version.Spec.PipelineRef.Name = "create-version"
+				version.SetAnnotations(map[string]string{"kfp.jackhoman.com/pipeline-version": "1.0.1"})
+				version.Spec.Pipeline = "create-version"
 				version.Spec.Workflow.Raw = raw
 				version.Spec.Description = "version 1.0.1"
 				it.Eventually().Create(version).Should(Succeed())
@@ -124,6 +124,7 @@ var _ = Describe("PipelineVersionController", func() {
 				it.Eventually().GetWhen(types.NamespacedName{Name: "create-version-v1"}, version, func(obj client.Object) bool {
 					return len(obj.(*kfpv1alpha1.PipelineVersion).Status.ID) > 0
 				}).Should(Succeed())
+				Expect(version.Status.Name).To(Equal("1.0.1"))
 			})
 		})
 	})
@@ -139,8 +140,8 @@ var _ = Describe("PipelineVersionController", func() {
 
 			version := &kfpv1alpha1.PipelineVersion{}
 			version.SetName("create-version-v1")
-			version.SetLabels(map[string]string{"kfp.jackhoman.com/pipeline-version": "1.0.1"})
-			version.Spec.PipelineRef.Name = "create-version"
+			version.SetAnnotations(map[string]string{"kfp.jackhoman.com/pipeline-version": "1.0.1"})
+			version.Spec.Pipeline = "create-version"
 			version.Spec.Workflow.Raw = raw
 			version.Spec.Description = "version 1.0.1"
 			it.Eventually().Create(version).Should(Succeed())
@@ -166,7 +167,7 @@ var _ = Describe("PipelineVersionController", func() {
 			version := &kfpv1alpha1.PipelineVersion{}
 			version.SetName("create-version-v1")
 			version.SetAnnotations(map[string]string{"kfp.jackhoman.com/pipeline-version": "1.0.1"})
-			version.Spec.PipelineRef.Name = "create-version"
+			version.Spec.Pipeline = "create-version"
 			version.Spec.Workflow.Raw = raw
 			version.Spec.Description = "version 1.0.1"
 			it.Eventually().Create(version).Should(Succeed())

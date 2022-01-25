@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -31,9 +30,9 @@ type PipelineVersionSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of PipelineVersion. Edit pipelineversion_types.go to remove/update
-	Description string                      `json:"description,omitempty"`
-	PipelineRef corev1.LocalObjectReference `json:"pipeline"`
-	Workflow    runtime.RawExtension        `json:"workflow"`
+	Description string               `json:"description,omitempty"`
+	Pipeline    string               `json:"pipeline"`
+	Workflow    runtime.RawExtension `json:"workflow"`
 }
 
 // PipelineVersionStatus defines the observed state of PipelineVersion
@@ -41,11 +40,15 @@ type PipelineVersionStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	PipelineID string `json:"pipelineId,omitempty"`
+	Name       string `json:"name,omitempty"`
 	ID         string `json:"id,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.name`
+//+kubebuilder:printcolumn:name="PipelineName",type=string,JSONPath=`.spec.pipeline.name`
+//+kubebuilder:printcolumn:name="PipelineId",type=string,JSONPath=`.status.pipelineId`
 
 // PipelineVersion is the Schema for the pipelineversions API
 type PipelineVersion struct {

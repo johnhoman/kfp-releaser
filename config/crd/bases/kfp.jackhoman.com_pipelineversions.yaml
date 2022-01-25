@@ -16,7 +16,17 @@ spec:
     singular: pipelineversion
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.name
+      name: Version
+      type: string
+    - jsonPath: .spec.pipeline.name
+      name: PipelineName
+      type: string
+    - jsonPath: .status.pipelineId
+      name: PipelineId
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: PipelineVersion is the Schema for the pipelineversions API
@@ -41,14 +51,7 @@ spec:
                   to remove/update
                 type: string
               pipeline:
-                description: LocalObjectReference contains enough information to let
-                  you locate the referenced object inside the same namespace.
-                properties:
-                  name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                      TODO: Add other useful fields. apiVersion, kind, uid?'
-                    type: string
-                type: object
+                type: string
               workflow:
                 type: object
             required:
@@ -59,6 +62,8 @@ spec:
             description: PipelineVersionStatus defines the observed state of PipelineVersion
             properties:
               id:
+                type: string
+              name:
                 type: string
               pipelineId:
                 description: 'INSERT ADDITIONAL STATUS FIELD - define observed state

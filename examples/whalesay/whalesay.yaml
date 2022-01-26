@@ -1,72 +1,7 @@
+---
 apiVersion: kfp.jackhoman.com/v1alpha1
 kind: Pipeline
 metadata:
   name: cowsay
 spec:
   description: Whalesay pipeline
----
-apiVersion: kfp.jackhoman.com/v1alpha1
-kind: PipelineVersion
-metadata:
-  name: cowsay-v1.0.0
-  annotations:
-    kfp.jackhoman.com/pipeline-version: "1.0.0"
-spec:
-  pipeline: cowsay
-  workflow:
-    apiVersion: argoproj.io/v1alpha1
-    kind: Workflow
-    metadata:
-      name: whalesay
-    spec:
-      entrypoint: whalesay
-      templates:
-      - name: whalesay
-        container:
-          image: docker/whalesay:latest
-          command: ["cowsay"]
-          args: ["Hello, World!"]
----
-apiVersion: kfp.jackhoman.com/v1alpha1
-kind: PipelineVersion
-metadata:
-  name: cowsay-v2.0.0
-  annotations:
-    kfp.jackhoman.com/pipeline-version: "2.0.0"
-spec:
-  pipeline: cowsay
-  workflow:
-    apiVersion: argoproj.io/v1alpha1
-    kind: Workflow
-    metadata:
-      name: whalesay
-    spec:
-      entrypoint: whalesay
-      templates:
-      - name: whalesay
-        container:
-          image: docker/whalesay:latest
-          command: ["cowsay"]
-          args: ["Hello, World!"]
----
-apiVersion: kfp.jackhoman.com/v1alpha1
-kind: PipelineVersion
-metadata:
-  name: cowsay-v3.0.0
-  annotations:
-    kfp.jackhoman.com/pipeline-version: "3.0.0"
-spec:
-  pipeline: cowsay
-  workflow:
-    apiVersion: argoproj.io/v1alpha1
-    kind: Workflow
-    metadata:
-      name: whalesay
-    spec:
-      entrypoint: whalesay
-      templates:
-      - name: whalesay
-        container:
-          image: docker/whalesay:latest
-          command: ["cowsay"]
-          args: ["Hello, World!"]

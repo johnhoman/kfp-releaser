@@ -34,7 +34,8 @@ kustomize build "github.com/johnhoman/kfp-releaser/config/crd?ref=main" | kubect
 kustomize build "github.com/johnhoman/kfp-releaser/config/default?ref=main" | kubectl apply -f -
 ```
 
-There are a few example manifests available in the examples/whalesay directory
+There are a few example manifests available in the examples/whalesay directory. You can
+create the following argo application to install the pipelines
 
 ```shell
 kubectl create namespace namespace kubeflow-examples

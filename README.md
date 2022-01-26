@@ -29,46 +29,11 @@ kubectl apply -k "github.com/kubeflow/pipelines/manifests/kustomize/env/platform
 ```
 
 ### Install `kfp-releaser`
-
 ```shell
-cat > pipelines/whalesay/manifest.yaml <<EOF
-apiVersion: kfp.jackhoman.com/v1alpha1
-kind: Pipeline
-metadata:
-  name: whalesay
-spec:
-  description: Shows a really exciting picture of a whale
-EOF
-cat > pipelines/whalesay/versions/v1.0.1/manifest.yaml <<EOF
-apiVersion: kfp.jackhoman.com/v1alpha1
-kind: PipelineVersion
-metadata:
-  name: whalesay-v0.1.0
-spec:
-  pipeline: whalesay
-  workflow:
-    apiVersion: argoproj.io/v1alpha1
-    kind: Workflow
-    metadata:
-      name: whalesay
-    spec:
-      entrypoint: whalesay
-      templates:
-      - name: whalesay
-        container:
-          image: docker/whalesay
-          command: [cowsay]
-          args: ["hello world"]
-EOF
+kustomize build "github.com/johnhoman/kfp-releaser/config/crd?ref=main" | kubectl apply -f -
+kustomize build "github.com/johnhoman/kfp-releaser/config/default?ref=main" | kubectl apply -f -
 ```
 
-```shell
-git add pipelines/whalesay && git commit -m "new whalesay pipeline"
-git push
-```
-
-Once those changes are in git you can create an argo application for the pipelines
-folder
 
 ```shell
 cat > kubeflow apply -f - <<EOF

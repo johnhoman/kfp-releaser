@@ -123,7 +123,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	transport := httptransport.New("localhost:8888", "", []string{"http"})
+	transport := httptransport.New("ml-pipeline.kubeflow.svc.cluster.local:8888", "", []string{"http"})
 	pipelines := struct {
 		UploadService
 		PipelineService

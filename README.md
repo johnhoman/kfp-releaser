@@ -10,16 +10,26 @@ to store the manifest and argo to release the manifest. Once the manifest reache
 will handle syncing the pipelines with [Kubeflow].
 
 
-## Setup
+## Simple Demo
 ### Install Argo
 ```shell
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
 Argo is used to install manifest files from the upstream GitHub repo holding the pipeline manifests. Each
-manifest should be tracked in separate manifests so that all the Pipeline versions are always available on Kubeflow
+pipeline version should be tracked in separate manifests so that all the Pipeline versions are always available on Kubeflow
 (if that's what's desired -- if not they can be removed/updated)
 e.g. 
+### Install Kubeflow Pipelines
+```shell
+export PIPELINE_VERSION=1.7.0
+kubectl apply -k "github.com/kubeflow/pipelines/manifests/kustomize/cluster-scoped-resources?ref=$PIPELINE_VERSION"
+kubectl wait --for condition=established --timeout=60s crd/applications.app.k8s.io
+kubectl apply -k "github.com/kubeflow/pipelines/manifests/kustomize/env/platform-agnostic-pns?ref=$PIPELINE_VERSION"
+```
+
+### Install `kfp-releaser`
+
 ```shell
 cat > pipelines/whalesay/manifest.yaml <<EOF
 apiVersion: kfp.jackhoman.com/v1alpha1
@@ -73,8 +83,8 @@ spec:
     server: https://kubernetes.default.svc                                                                                                                                                    
   project: default                                                                                                                                                                            
   source:                                                                                                                                                                                     
-    path: pipelines/whalesay                                                                                                                                                                            
-    repoURL: https://github.com/example/sample-pipelines                                                                                                                                       
+    path: examples
+    repoURL: https://github.com/johnhoman/kfp-releaser
     targetRevision: HEAD                                                                                                                                                                      
 EOF
 ```

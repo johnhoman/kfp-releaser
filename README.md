@@ -34,9 +34,11 @@ kustomize build "github.com/johnhoman/kfp-releaser/config/crd?ref=main" | kubect
 kustomize build "github.com/johnhoman/kfp-releaser/config/default?ref=main" | kubectl apply -f -
 ```
 
+There are a few example manifests available in the examples/whalesay directory
 
 ```shell
-cat > kubeflow apply -f - <<EOF
+kubectl create namespace namespace kubeflow-examples
+cat <<EOF | kubectl apply -f -
 apiVersion: argoproj.io/v1alpha1                                                                                                                                                              
 kind: Application                                                                                                                                                                             
 metadata:                                                                                                                                                                                     
@@ -48,11 +50,30 @@ spec:
     server: https://kubernetes.default.svc                                                                                                                                                    
   project: default                                                                                                                                                                            
   source:                                                                                                                                                                                     
-    path: examples
+    path: examples/whalesay
     repoURL: https://github.com/johnhoman/kfp-releaser
     targetRevision: HEAD                                                                                                                                                                      
+    directory:
+      recurse: true
 EOF
+application.argoproj.io/whalesay created
 ```
+
+The `whalesay` pipeline and it's versions are now synced with kubeflow (notice the pipeline IDs)
+```shell
+➜  kfp-releaser git:(main) ✗ kubectl get pipelines --all-namespaces       
+NAMESPACE           NAME     PIPELINEID
+kubeflow-examples   cowsay   2d226a37-95ee-4431-9165-218b97f8ac2f
+➜  kfp-releaser git:(main) ✗ kubectl get pipelineversions --all-namespaces
+NAMESPACE           NAME            VERSION         PIPELINENAME   PIPELINEID
+kubeflow-examples   cowsay-v1.0.0   cowsay-v1.0.0   cowsay         2d226a37-95ee-4431-9165-218b97f8ac2f
+kubeflow-examples   cowsay-v2.0.0   cowsay-v2.0.0   cowsay         2d226a37-95ee-4431-9165-218b97f8ac2f
+kubeflow-examples   cowsay-v3.0.0   cowsay-v3.0.0   cowsay         2d226a37-95ee-4431-9165-218b97f8ac2f
+➜  kfp-releaser git:(main) ✗
+```
+
+![Pipelines sync to Kubeflow](img/kfp-whalesay.png)
+
 
 [Controller]: https://kubernetes.io/docs/concepts/architecture/controller
 [Kubeflow]: https://kubeflow.org

@@ -1,0 +1,20 @@
+# permissions for end users to view recurringruns.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: recurringrun-viewer-role
+rules:
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - recurringruns
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - recurringruns/status
+  verbs:
+  - get

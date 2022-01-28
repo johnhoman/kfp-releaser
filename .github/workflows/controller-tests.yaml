@@ -1,0 +1,20 @@
+name: Tests
+on:
+  push:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ["1.17"]
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go-version }}
+    - run: go mod tidy && git diff --check
+    - run: minikube start --kubernetes-version=v1.20.2 --memory=4400
+    - run: kubectl apply -k config/ && sleep 60
+    - run: kubectl wait --for=condition=ready pod -l app=ml-pipeline -n kubeflow --timeout=10m
+    - run: make test ./...

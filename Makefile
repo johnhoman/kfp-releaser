@@ -57,7 +57,10 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run tests.
-	ACK_GINKGO_DEPRECATIONS=1.16.5 KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+	GO_KFP_API_SERVER_ADDRESS="$(shell minikube service kfp --url -n kubeflow | sed 's/http:\/\///g')" \
+	ACK_GINKGO_DEPRECATIONS=1.16.5 \
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" \
+	    go test ./... -coverprofile cover.out
 
 ##@ Build
 

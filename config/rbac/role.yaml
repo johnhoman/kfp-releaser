@@ -58,3 +58,29 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - recurringruns
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - recurringruns/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - recurringruns/status
+  verbs:
+  - get
+  - patch
+  - update

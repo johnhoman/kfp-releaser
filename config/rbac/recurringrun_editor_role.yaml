@@ -1,0 +1,24 @@
+# permissions for end users to edit recurringruns.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: recurringrun-editor-role
+rules:
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - recurringruns
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - kfp.jackhoman.com
+  resources:
+  - recurringruns/status
+  verbs:
+  - get

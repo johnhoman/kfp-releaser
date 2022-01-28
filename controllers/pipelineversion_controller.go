@@ -19,13 +19,14 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/tools/record"
-	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	cu "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -43,7 +44,7 @@ type PipelineVersionReconciler struct {
 	Scheme *runtime.Scheme
 	record.EventRecorder
 
-	Pipelines kfp.Pipelines
+	Pipelines kfp.Interface
 }
 
 const (
@@ -81,7 +82,7 @@ func (r *PipelineVersionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		logger.Info("Deleting pipeline resource")
 		// Under deletion
 		if cu.ContainsFinalizer(instance, VersionFinalizer) {
-			err := r.Pipelines.DeleteVersion(ctx, &kfp.DeleteVersionOptions{ID: instance.Status.ID})
+			err := r.Pipelines.DeleteVersion(ctx, &kfp.DeleteOptions{ID: instance.Status.ID})
 			if err != nil && !kfp.IsNotFound(err) {
 				return ctrl.Result{}, err
 			}

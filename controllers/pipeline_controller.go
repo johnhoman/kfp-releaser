@@ -18,23 +18,24 @@ package controllers
 
 import (
 	"context"
-	"github.com/johnhoman/go-kfp"
-	"github.com/johnhoman/go-kfp/pipelines"
-	kfpv1alpha1 "github.com/johnhoman/kfp-releaser/api/v1alpha1"
+	"reflect"
+	"sort"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	cu "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"sort"
+
+	"github.com/johnhoman/go-kfp"
+	kfpv1alpha1 "github.com/johnhoman/kfp-releaser/api/v1alpha1"
 )
 
 const (
@@ -48,7 +49,7 @@ type PipelineReconciler struct {
 	Scheme *runtime.Scheme
 	record.EventRecorder
 
-	Pipelines     kfp.Pipelines
+	Pipelines     kfp.Interface
 	BlankWorkflow map[string]interface{}
 }
 
@@ -115,7 +116,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	name := instance.GetNamespace() + "-" + instance.GetName()
 	pipeline, err := r.Pipelines.Get(ctx, &kfp.GetOptions{Name: name})
 	if err != nil {
-		if !pipelines.IsNotFound(err) {
+		if !kfp.IsNotFound(err) {
 			r.Event(instance, corev1.EventTypeWarning, "GetPipelineError", err.Error())
 			return ctrl.Result{}, err
 		}
@@ -134,7 +135,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			return ctrl.Result{}, err
 		}
 		// Remove the blank after the pipeline stub is created
-		err := r.Pipelines.DeleteVersion(ctx, &kfp.DeleteVersionOptions{ID: pipeline.ID})
+		err := r.Pipelines.DeleteVersion(ctx, &kfp.DeleteOptions{ID: pipeline.ID})
 		if err != nil {
 			r.Event(instance, corev1.EventTypeWarning, "DeleteVersionError", err.Error())
 			return ctrl.Result{}, err

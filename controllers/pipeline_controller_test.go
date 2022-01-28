@@ -1,24 +1,36 @@
 package controllers
 
 import (
-	kfpv1alpha1 "github.com/johnhoman/kfp-releaser/api/v1alpha1"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"os"
+	"strings"
+
+	httptransport "github.com/go-openapi/runtime/client"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/johnhoman/controller-tools/manager"
 	"github.com/johnhoman/go-kfp"
-	"github.com/johnhoman/go-kfp/fake"
+	kfpv1alpha1 "github.com/johnhoman/kfp-releaser/api/v1alpha1"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("PipelineController", func() {
 	var it manager.IntegrationTest
-	var service kfp.Pipelines
+	var service kfp.Interface
 
 	BeforeEach(func() {
-		service = kfp.New(fake.NewPipelineService(), nil)
+		address, ok := os.LookupEnv("GO_KFP_API_SERVER_ADDRESS")
+		if !ok {
+			Fail("could not run tests without kubeflow api service address (export GO_KFP_API_SERVER_ADDRESS=)")
+		}
+		if strings.HasPrefix(address, "http://") {
+			address = strings.TrimPrefix(address, "http://")
+		}
+		transport := httptransport.New(address, "", []string{"http"})
+		service = kfp.New(kfp.NewPipelineService(transport), nil)
 		it = manager.IntegrationTestBuilder().
 			WithScheme(scheme.Scheme).
 			Complete(cfg)
@@ -27,6 +39,7 @@ var _ = Describe("PipelineController", func() {
 			Scheme:        it.GetScheme(),
 			Pipelines:     service,
 			BlankWorkflow: workflow(),
+			EventRecorder: it.GetEventRecorderFor("kfp-releaser.controller-test"),
 		}).SetupWithManager(it)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -80,10 +93,10 @@ var _ = Describe("PipelineController", func() {
 			it.Eventually().GetWhen(types.NamespacedName{Name: "finalized"}, instance, func(obj client.Object) bool {
 				return len(obj.GetFinalizers()) == 1
 			}).Should(Succeed())
-			Eventually(func() bool {
+			Eventually(func() error {
 				_, err := service.Get(it.GetContext(), &kfp.GetOptions{ID: instance.Status.ID})
-				return kfp.IsNotFound(err)
-			}).Should(BeTrue())
+				return err
+			}, "2s").Should(Equal(kfp.NewNotFound()))
 		})
 	})
 	Context("CreatePipeline", func() {

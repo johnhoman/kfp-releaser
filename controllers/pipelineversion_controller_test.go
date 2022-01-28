@@ -1,15 +1,17 @@
 package controllers
 
 import (
-	kfpv1alpha1 "github.com/johnhoman/kfp-releaser/api/v1alpha1"
+	httptransport "github.com/go-openapi/runtime/client"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/kubernetes/scheme"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 
 	"github.com/johnhoman/controller-tools/manager"
 	"github.com/johnhoman/go-kfp"
-	"github.com/johnhoman/go-kfp/fake"
+	kfpv1alpha1 "github.com/johnhoman/kfp-releaser/api/v1alpha1"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,11 +19,19 @@ import (
 
 var _ = Describe("PipelineVersionController", func() {
 	var it manager.IntegrationTest
-	var service kfp.Pipelines
+	var service kfp.Interface
 	var raw []byte
 
 	BeforeEach(func() {
-		service = kfp.New(fake.NewPipelineService(), nil)
+		address, ok := os.LookupEnv("GO_KFP_API_SERVER_ADDRESS")
+		if !ok {
+			Fail("could not run tests without kubeflow api service address (export GO_KFP_API_SERVER_ADDRESS=)")
+		}
+		if strings.HasPrefix(address, "http://") {
+			address = strings.TrimPrefix(address, "http://")
+		}
+		transport := httptransport.New(address, "", []string{"http"})
+		service = kfp.New(kfp.NewPipelineService(transport), nil)
 		it = manager.IntegrationTestBuilder().
 			WithScheme(scheme.Scheme).
 			Complete(cfg)
@@ -31,6 +41,7 @@ var _ = Describe("PipelineVersionController", func() {
 			Scheme:        it.GetScheme(),
 			Pipelines:     service,
 			BlankWorkflow: workflow(),
+			EventRecorder: it.GetEventRecorderFor("kfp-releaser.controller-test"),
 		}).SetupWithManager(it)
 		Expect(err).ToNot(HaveOccurred())
 		err = (&PipelineVersionReconciler{
@@ -88,10 +99,15 @@ var _ = Describe("PipelineVersionController", func() {
 				}).Should(Succeed())
 				Expect(version.GetFinalizers()).To(ContainElement(VersionFinalizer))
 
+				version = &kfpv1alpha1.PipelineVersion{}
+				it.Eventually().GetWhen(types.NamespacedName{Name: versionName}, version, func(obj client.Object) bool {
+					return len(obj.(*kfpv1alpha1.PipelineVersion).Status.ID) > 0
+				}).Should(Succeed())
+
 				// Deleting the upstream resource should allow the controller
 				// to safely remove the finalizer
 				Expect(service.DeleteVersion(
-					it.GetContext(), &kfp.DeleteVersionOptions{ID: version.Status.ID}),
+					it.GetContext(), &kfp.DeleteOptions{ID: version.Status.ID}),
 				).Should(Succeed())
 
 				version = &kfpv1alpha1.PipelineVersion{}

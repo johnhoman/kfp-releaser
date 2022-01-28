@@ -30,6 +30,7 @@ kubectl apply -k "github.com/kubeflow/pipelines/manifests/kustomize/env/platform
 
 ### Install `kfp-releaser`
 ```shell
+kubectl create namespace kfp-releaser-system
 kustomize build "github.com/johnhoman/kfp-releaser/config/crd?ref=main" | kubectl apply -f -
 kustomize build "github.com/johnhoman/kfp-releaser/config/default?ref=main" | kubectl apply -f -
 ```

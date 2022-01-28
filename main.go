@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -122,15 +123,10 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
+	// TODO: Real Kubeflow will need an auth token from /var/run/secrets/kubeflow/token
 
 	transport := httptransport.New("ml-pipeline.kubeflow.svc.cluster.local:8888", "", []string{"http"})
-	pipelines := struct {
-		UploadService
-		PipelineService
-	}{
-		UploadService:   pipeline_upload_service.New(transport, nil),
-		PipelineService: pipeline_service.New(transport, nil),
-	}
+	pipelines := kfp.NewPipelineService(transport)
 
 	if err = (&controllers.PipelineReconciler{
 		Client:        mgr.GetClient(),
@@ -149,6 +145,13 @@ func main() {
 		EventRecorder: mgr.GetEventRecorderFor("kfp.jackhoman.com"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PipelineVersion")
+		os.Exit(1)
+	}
+	if err = (&controllers.RecurringRunReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "RecurringRun")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

@@ -57,7 +57,7 @@ var _ = Describe("RecurringRunController", func() {
 			Client:        it.GetClient(),
 			Scheme:        it.GetScheme(),
 			EventRecorder: it.GetEventRecorderFor("kfp-releaser.controller-test"),
-			api:     service,
+			api:           service,
 		}).SetupWithManager(it)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -67,7 +67,7 @@ var _ = Describe("RecurringRunController", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 	AfterEach(func() { it.StopManager() })
-	FWhen("a pipeline exists", func() {
+	When("a pipeline exists", func() {
 		var pipeline *kfpv1alpha1.Pipeline
 		var version *kfpv1alpha1.PipelineVersion
 		var name string

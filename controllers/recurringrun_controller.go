@@ -107,7 +107,6 @@ func (r *RecurringRunReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		logger.Info("added finalizer")
 	}
 
-
 	return ctrl.Result{}, nil
 }
 

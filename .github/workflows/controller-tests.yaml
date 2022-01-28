@@ -15,7 +15,7 @@ jobs:
         go-version: ${{ matrix.go-version }}
     - run: go mod tidy && git diff --check
     - run: minikube start --kubernetes-version=v1.20.2 --memory=4400
-    - run: kubectl apply -k github.com/johnhoman/kfp-releaser/config/ && sleep 60
+    - run: kubectl apply -k github.com/johnhoman/go-kfp/config/ && sleep 60
     - run: |
         # download kubebuilder and install locally.
         curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)

@@ -153,6 +153,12 @@ var _ = Describe("RecurringRunController", func() {
 					it.Eventually().Get(versionKey, instance).Should(Succeed())
 					Expect(instance.GetFinalizers()).ShouldNot(ContainElement(RecurringRunFinalizer))
 				})
+				It("should remove the upstream resource", func() {
+					Eventually(func() error {
+						_, err := api.GetJob(it.GetContext(), &kfp.GetOptions{ID: recurringRun.Status.ID})
+						return err
+					}).Should(Equal(kfp.NewNotFound()))
+				})
 			})
 		})
 	})

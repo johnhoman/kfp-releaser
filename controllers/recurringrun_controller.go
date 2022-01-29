@@ -19,17 +19,19 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/johnhoman/go-kfp"
+	"reflect"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/client-go/tools/record"
-	cu "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	cu "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/johnhoman/go-kfp"
 	kfpv1alpha1 "github.com/johnhoman/kfp-releaser/api/v1alpha1"
 )
 
@@ -49,12 +51,14 @@ const (
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=recurringruns,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=recurringruns/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=recurringruns/finalizers,verbs=update
+//+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelineversions,verbs=get;list;watch;
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *RecurringRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	k8s := client.NewNamespacedClient(r.Client, req.Namespace)
+	api := kfp.NewNamespaced(r.api, req.Namespace)
 
 	instance := &kfpv1alpha1.RecurringRun{}
 	if err := k8s.Get(ctx, req.NamespacedName, instance); err != nil {
@@ -65,7 +69,7 @@ func (r *RecurringRunReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if !instance.GetDeletionTimestamp().IsZero() {
 		// RecurringRun is being deleted
 		if cu.ContainsFinalizer(instance, RecurringRunFinalizer) {
-			_, err := r.api.GetJob(ctx, &kfp.GetOptions{Name: instance.GetName()})
+			job, err := api.GetJob(ctx, &kfp.GetOptions{Name: instance.GetName()})
 			if err != nil {
 				if !kfp.IsNotFound(err) {
 					logger.Error(err, "unable to get job")
@@ -73,10 +77,10 @@ func (r *RecurringRunReconciler) Reconcile(ctx context.Context, req ctrl.Request
 				}
 			} else {
 				// err == nil
-				// if err := r.api.DeleteJob(ctx, &kfp.DeleteOptions{ID: job.ID}); err != nil {
-				// 	logger.Error(err, "unable to delete recurring run")
-				// 	return ctrl.Result{}, err
-				// }
+				if err := api.DeleteJob(ctx, &kfp.DeleteOptions{ID: job.ID}); err != nil {
+					logger.Error(err, "unable to delete recurring run")
+					return ctrl.Result{}, err
+				}
 				r.Eventf(instance, corev1.EventTypeNormal, "Deleted", fmt.Sprintf(
 					"Removed recurring run %s", instance.Status.ID,
 				))
@@ -105,6 +109,50 @@ func (r *RecurringRunReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			return ctrl.Result{}, err
 		}
 		logger.Info("added finalizer")
+	}
+
+	version := &kfpv1alpha1.PipelineVersion{}
+	if err := k8s.Get(ctx, types.NamespacedName{Name: instance.Spec.VersionRef}, version); err != nil {
+		r.Eventf(instance, corev1.EventTypeWarning, "VersionNotFound", fmt.Sprintf(
+			"Could not find version %s", instance.Spec.VersionRef,
+		))
+		return ctrl.Result{}, err
+	}
+
+	var err error
+	job := &kfp.Job{}
+	job, err = api.GetJob(ctx, &kfp.GetOptions{Name: instance.GetName()})
+	if err != nil {
+		if !kfp.IsNotFound(err) {
+			return ctrl.Result{}, err
+		}
+		job, err = api.CreateJob(ctx, &kfp.CreateJobOptions{
+			Name:           instance.GetName(),
+			PipelineID:     version.Status.PipelineID,
+			VersionID:      version.Status.ID,
+			CronSchedule:   instance.Spec.Schedule.Cron,
+			Enabled:        true,
+			MaxConcurrency: 1,
+		})
+		if err != nil {
+			logger.Error(err, "an error occurred creating the recurring run")
+			return ctrl.Result{}, err
+		}
+		r.Eventf(instance, corev1.EventTypeNormal, "Created", fmt.Sprintf(
+			"Created recurring run %s:%s", job.Name, job.ID,
+		))
+	}
+	original := instance.DeepCopy()
+
+	instance.Status.ID = job.ID
+	instance.Status.VersionID = job.VersionID
+	instance.Status.PipelineID = job.PipelineID
+	if !reflect.DeepEqual(instance.Status, original.Status) {
+		if err := k8s.Status().Update(ctx, instance); err != nil {
+			logger.Error(err, "unable to update status")
+			return ctrl.Result{}, err
+		}
+		logger.Info("updated status")
 	}
 
 	return ctrl.Result{}, nil

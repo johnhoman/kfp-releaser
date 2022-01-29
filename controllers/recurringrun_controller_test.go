@@ -73,6 +73,7 @@ var _ = Describe("RecurringRunController", func() {
 		var name string
 		var key types.NamespacedName
 		var versionKey types.NamespacedName
+		var api kfp.Interface
 		BeforeEach(func() {
 			name = "whalesay"
 			key = types.NamespacedName{Name: name}
@@ -96,6 +97,7 @@ var _ = Describe("RecurringRunController", func() {
 			it.Eventually().GetWhen(versionKey, version, func(obj client.Object) bool {
 				return len(obj.(*kfpv1alpha1.PipelineVersion).Status.ID) > 0
 			}).Should(Succeed())
+			api = kfp.NewNamespaced(service, pipeline.GetNamespace())
 		})
 		AfterEach(func() {
 			// Just call delete, pass or fail doesn't matter all that much
@@ -111,9 +113,18 @@ var _ = Describe("RecurringRunController", func() {
 				recurringRun.Spec.Schedule = kfpv1alpha1.RecurringRunSchedule{Cron: "* * * * *"}
 				recurringRun.Spec.VersionRef = version.GetName()
 				it.Eventually().Create(recurringRun).Should(Succeed())
+				it.Eventually().GetWhen(versionKey, recurringRun, func(obj client.Object) bool {
+					return len(obj.(*kfpv1alpha1.RecurringRun).Status.ID) > 0
+				}).Should(Succeed())
 			})
 			AfterEach(func() {
 				it.Expect().Delete(recurringRun).Should(Or(Succeed(), Not(Succeed())))
+			})
+			It("should create the recurring run in kubeflow", func() {
+				Eventually(func() error {
+					_, err := api.GetJob(it.GetContext(), &kfp.GetOptions{ID: recurringRun.Status.ID})
+					return err
+				}).Should(Succeed())
 			})
 			When("the recurring run is not being deleted", func() {
 				When("it has a finalizer", func() {
@@ -128,9 +139,6 @@ var _ = Describe("RecurringRunController", func() {
 						it.Eventually().Get(versionKey, instance).Should(Succeed())
 						Expect(instance.GetFinalizers()).Should(ContainElement(RecurringRunFinalizer))
 					})
-				})
-				When("it does not have a finalizer", func() {
-
 				})
 			})
 			When("the recurring run is being deleted", func() {

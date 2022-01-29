@@ -73,8 +73,24 @@ kubeflow-examples   cowsay-v2.0.0   cowsay-v2.0.0   cowsay         2d226a37-95ee
 kubeflow-examples   cowsay-v3.0.0   cowsay-v3.0.0   cowsay         2d226a37-95ee-4431-9165-218b97f8ac2f
 ➜  kfp-releaser git:(main) ✗
 ```
-
+### Pipelines Dashboard
 ![Pipelines sync to Kubeflow](img/kfp-whalesay.png)
+
+### Create a RecurringRun
+
+```shell
+cat <<EOF | kubectl apply -f -
+apiVersion: kfp.jackhoman.com/v1alpha1
+kind: RecurringRun
+metadata:
+  name: cowsay-v1.0.0-every-minute
+  namespace: kubeflow-examples
+spec:
+  versionRef: cowsay-v1.0.0
+  schedule:
+    cron: '* * * * *'
+EOF
+```
 
 
 [Controller]: https://kubernetes.io/docs/concepts/architecture/controller

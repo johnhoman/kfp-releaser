@@ -51,5 +51,33 @@ def pipeline(s: str = ""):
 
 
 if __name__ == "__main__":
+    import tempfile
+    import os
+    import pathlib
+
     from kfp.compiler import Compiler
-    Compiler().compile(pipeline, package_path=__file__.replace(".py", ".yaml"))
+    from yaml import safe_load, safe_dump
+
+    with tempfile.NamedTemporaryFile(mode="w+t", suffix=".yaml") as open_file:
+        Compiler().compile(pipeline_func=pipeline, package_path=open_file.name)
+        with open(open_file.name, mode="rt") as open_file2:
+            workflow = open_file2.read()
+
+    ref = os.environ.get("GITHUB_REF_NAME", "latest")
+
+    manifest = {
+        "apiVersion": "aws.jackhoman.com/v1alpha1",
+        "kind": "PipelineVersion",
+        "metadata": {
+            "name": f"is-palindrome-{ref}",
+        },
+        "spec": {
+            "pipeline": "is-palindrome",
+            "description": f"pipeline release {ref}",
+            "workflow": safe_load(workflow),
+        }
+    }
+    path = pathlib.Path(__file__).parent.joinpath("versions", f"is-palindrome-{ref}.yaml")
+
+    with path.open(mode="wt") as open_file:
+        safe_dump(manifest, stream=open_file, default_flow_style=False)

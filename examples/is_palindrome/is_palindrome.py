@@ -1,3 +1,5 @@
+from functools import partial
+
 from kfp import dsl
 from kfp.components import create_component_from_func
 
@@ -17,27 +19,27 @@ def compare(s: str) -> str:
     return "true" if s[0] == s[-1] else "false"
 
 
-@create_component_from_func
-def print_op(s):
-    print(s)
+@partial(create_component_from_func, packages_to_install=["ml-metadata"])
+def return_value(rv, run_id: str = "{{ workflow.uid }}") -> str:
+    return rv
 
 
 @dsl.graph_component
-def is_palindrome(s: str):
+def is_palindrome(s: str, run_id: str = "{{ workflow.uid }}"):
 
     l = length(s)
     with dsl.Condition(l.output == 1):
-        print_op("true")
+        return_value("true", run_id)
 
     with dsl.Condition(l.output == 0):
-        print_op("true")
+        return_value("true", run_id)
 
     with dsl.Condition(l.output > 1):
 
         comp = compare(s)
         comp.after(l)
         with dsl.Condition(comp.output == "false"):
-            print_op("false")
+            return_value("false", run_id)
 
         with dsl.Condition(comp.output == "true"):
             substring = trim(s)
@@ -53,7 +55,9 @@ if __name__ == "__main__":
     from kfp.compiler import Compiler
     from yaml import safe_load, safe_dump
 
+
     def manifest(pipeline_func):
+
         ref = os.environ.get("GITHUB_REF_NAME", "latest")
         name = pipeline_func.__qualname__
         with tempfile.NamedTemporaryFile(mode="w+t", suffix=".yaml") as open_file:

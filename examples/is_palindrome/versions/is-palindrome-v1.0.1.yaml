@@ -1,0 +1,623 @@
+apiVersion: aws.jackhoman.com/v1alpha1
+kind: PipelineVersion
+metadata:
+  name: is-palindrome-v1.0.1
+spec:
+  description: pipeline release v1.0.1
+  pipeline: is-palindrome
+  workflow:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Workflow
+    metadata:
+      annotations:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.11
+        pipelines.kubeflow.org/pipeline_compilation_time: '2022-02-02T00:34:18.993265'
+        pipelines.kubeflow.org/pipeline_spec: '{"inputs": [{"name": "s", "type": "String"},
+          {"default": "{{ workflow.uid }}", "name": "run_id", "optional": true, "type":
+          "String"}], "name": "Is palindrome"}'
+      generateName: is-palindrome-
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.11
+    spec:
+      arguments:
+        parameters:
+        - name: s
+        - name: run_id
+          value: '{{ workflow.uid }}'
+      entrypoint: is-palindrome
+      serviceAccountName: pipeline-runner
+      templates:
+      - container:
+          args:
+          - --s
+          - '{{inputs.parameters.s}}'
+          - '----output-paths'
+          - /tmp/outputs/Output/data
+          command:
+          - sh
+          - -ec
+          - 'program_path=$(mktemp)
+
+            printf "%s" "$0" > "$program_path"
+
+            python3 -u "$program_path" "$@"
+
+            '
+          - "def compare(s):\n    return \"true\" if s[0] == s[-1] else \"false\"\n\
+            \ndef _serialize_str(str_value: str) -> str:\n    if not isinstance(str_value,\
+            \ str):\n        raise TypeError('Value \"{}\" has type \"{}\" instead\
+            \ of str.'.format(\n            str(str_value), str(type(str_value))))\n\
+            \    return str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Compare',\
+            \ description='')\n_parser.add_argument(\"--s\", dest=\"s\", type=str,\
+            \ required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\"\
+            , dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n\
+            _output_files = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs =\
+            \ compare(**_parsed_args)\n\n_outputs = [_outputs]\n\n_output_serializers\
+            \ = [\n    _serialize_str,\n\n]\n\nimport os\nfor idx, output_file in\
+            \ enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n\
+            \    except OSError:\n        pass\n    with open(output_file, 'w') as\
+            \ f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"
+          image: python:3.7
+        inputs:
+          parameters:
+          - name: s
+        metadata:
+          annotations:
+            pipelines.kubeflow.org/arguments.parameters: '{"s": "{{inputs.parameters.s}}"}'
+            pipelines.kubeflow.org/component_ref: '{}'
+            pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+              {"args": ["--s", {"inputValue": "s"}, "----output-paths", {"outputPath":
+              "Output"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+              \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+              "def compare(s):\n    return \"true\" if s[0] == s[-1] else \"false\"\n\ndef
+              _serialize_str(str_value: str) -> str:\n    if not isinstance(str_value,
+              str):\n        raise TypeError(''Value \"{}\" has type \"{}\" instead
+              of str.''.format(\n            str(str_value), str(type(str_value))))\n    return
+              str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Compare'',
+              description='''')\n_parser.add_argument(\"--s\", dest=\"s\", type=str,
+              required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\",
+              dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+              = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = compare(**_parsed_args)\n\n_outputs
+              = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\n]\n\nimport
+              os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+              OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+              "image": "python:3.7"}}, "inputs": [{"name": "s", "type": "String"}],
+              "name": "Compare", "outputs": [{"name": "Output", "type": "String"}]}'
+          labels:
+            pipelines.kubeflow.org/enable_caching: 'true'
+            pipelines.kubeflow.org/kfp_sdk_version: 1.8.11
+            pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        name: compare
+        outputs:
+          artifacts:
+          - name: compare-Output
+            path: /tmp/outputs/Output/data
+          parameters:
+          - name: compare-Output
+            valueFrom:
+              path: /tmp/outputs/Output/data
+      - dag:
+          tasks:
+          - arguments:
+              parameters:
+              - name: run_id
+                value: '{{inputs.parameters.run_id}}'
+            name: return-value
+            template: return-value
+        inputs:
+          parameters:
+          - name: run_id
+        name: condition-2
+      - dag:
+          tasks:
+          - arguments:
+              parameters:
+              - name: run_id
+                value: '{{inputs.parameters.run_id}}'
+            name: return-value-2
+            template: return-value-2
+        inputs:
+          parameters:
+          - name: run_id
+        name: condition-3
+      - dag:
+          tasks:
+          - arguments:
+              parameters:
+              - name: s
+                value: '{{inputs.parameters.s}}'
+            name: compare
+            template: compare
+          - arguments:
+              parameters:
+              - name: run_id
+                value: '{{inputs.parameters.run_id}}'
+            dependencies:
+            - compare
+            name: condition-5
+            template: condition-5
+            when: '"{{tasks.compare.outputs.parameters.compare-Output}}" == "false"'
+          - arguments:
+              parameters:
+              - name: s
+                value: '{{inputs.parameters.s}}'
+            dependencies:
+            - compare
+            name: condition-6
+            template: condition-6
+            when: '"{{tasks.compare.outputs.parameters.compare-Output}}" == "true"'
+        inputs:
+          parameters:
+          - name: run_id
+          - name: s
+        name: condition-4
+      - dag:
+          tasks:
+          - arguments:
+              parameters:
+              - name: run_id
+                value: '{{inputs.parameters.run_id}}'
+            name: return-value-3
+            template: return-value-3
+        inputs:
+          parameters:
+          - name: run_id
+        name: condition-5
+      - dag:
+          tasks:
+          - arguments:
+              parameters:
+              - name: s
+                value: '{{tasks.trim.outputs.parameters.trim-Output}}'
+            dependencies:
+            - trim
+            name: graph-is-palindrome-1
+            template: graph-is-palindrome-1
+          - arguments:
+              parameters:
+              - name: s
+                value: '{{inputs.parameters.s}}'
+            name: trim
+            template: trim
+        inputs:
+          parameters:
+          - name: s
+        name: condition-6
+      - dag:
+          tasks:
+          - arguments:
+              parameters:
+              - name: run_id
+                value: '{{inputs.parameters.run_id}}'
+            dependencies:
+            - length
+            name: condition-2
+            template: condition-2
+            when: '"{{tasks.length.outputs.parameters.length-Output}}" == "1"'
+          - arguments:
+              parameters:
+              - name: run_id
+                value: '{{inputs.parameters.run_id}}'
+            dependencies:
+            - length
+            name: condition-3
+            template: condition-3
+            when: '"{{tasks.length.outputs.parameters.length-Output}}" == "0"'
+          - arguments:
+              parameters:
+              - name: run_id
+                value: '{{inputs.parameters.run_id}}'
+              - name: s
+                value: '{{inputs.parameters.s}}'
+            dependencies:
+            - length
+            name: condition-4
+            template: condition-4
+            when: '{{tasks.length.outputs.parameters.length-Output}} > 1'
+          - arguments:
+              parameters:
+              - name: s
+                value: '{{inputs.parameters.s}}'
+            name: length
+            template: length
+        inputs:
+          parameters:
+          - name: run_id
+          - name: s
+        name: graph-is-palindrome-1
+      - dag:
+          tasks:
+          - arguments:
+              parameters:
+              - name: run_id
+                value: '{{inputs.parameters.run_id}}'
+              - name: s
+                value: '{{inputs.parameters.s}}'
+            name: graph-is-palindrome-1
+            template: graph-is-palindrome-1
+        inputs:
+          parameters:
+          - name: run_id
+          - name: s
+        name: is-palindrome
+      - container:
+          args:
+          - --s
+          - '{{inputs.parameters.s}}'
+          - '----output-paths'
+          - /tmp/outputs/Output/data
+          command:
+          - sh
+          - -ec
+          - 'program_path=$(mktemp)
+
+            printf "%s" "$0" > "$program_path"
+
+            python3 -u "$program_path" "$@"
+
+            '
+          - "def length(s):\n    return len(s)\n\ndef _serialize_int(int_value: int)\
+            \ -> str:\n    if isinstance(int_value, str):\n        return int_value\n\
+            \    if not isinstance(int_value, int):\n        raise TypeError('Value\
+            \ \"{}\" has type \"{}\" instead of int.'.format(\n            str(int_value),\
+            \ str(type(int_value))))\n    return str(int_value)\n\nimport argparse\n\
+            _parser = argparse.ArgumentParser(prog='Length', description='')\n_parser.add_argument(\"\
+            --s\", dest=\"s\", type=str, required=True, default=argparse.SUPPRESS)\n\
+            _parser.add_argument(\"----output-paths\", dest=\"_output_paths\", type=str,\
+            \ nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files =\
+            \ _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = length(**_parsed_args)\n\
+            \n_outputs = [_outputs]\n\n_output_serializers = [\n    _serialize_int,\n\
+            \n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n\
+            \    try:\n        os.makedirs(os.path.dirname(output_file))\n    except\
+            \ OSError:\n        pass\n    with open(output_file, 'w') as f:\n    \
+            \    f.write(_output_serializers[idx](_outputs[idx]))\n"
+          image: python:3.7
+        inputs:
+          parameters:
+          - name: s
+        metadata:
+          annotations:
+            pipelines.kubeflow.org/arguments.parameters: '{"s": "{{inputs.parameters.s}}"}'
+            pipelines.kubeflow.org/component_ref: '{}'
+            pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+              {"args": ["--s", {"inputValue": "s"}, "----output-paths", {"outputPath":
+              "Output"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+              \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+              "def length(s):\n    return len(s)\n\ndef _serialize_int(int_value:
+              int) -> str:\n    if isinstance(int_value, str):\n        return int_value\n    if
+              not isinstance(int_value, int):\n        raise TypeError(''Value \"{}\"
+              has type \"{}\" instead of int.''.format(\n            str(int_value),
+              str(type(int_value))))\n    return str(int_value)\n\nimport argparse\n_parser
+              = argparse.ArgumentParser(prog=''Length'', description='''')\n_parser.add_argument(\"--s\",
+              dest=\"s\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\",
+              dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+              = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = length(**_parsed_args)\n\n_outputs
+              = [_outputs]\n\n_output_serializers = [\n    _serialize_int,\n\n]\n\nimport
+              os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+              OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+              "image": "python:3.7"}}, "inputs": [{"name": "s", "type": "String"}],
+              "name": "Length", "outputs": [{"name": "Output", "type": "Integer"}]}'
+          labels:
+            pipelines.kubeflow.org/enable_caching: 'true'
+            pipelines.kubeflow.org/kfp_sdk_version: 1.8.11
+            pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        name: length
+        outputs:
+          artifacts:
+          - name: length-Output
+            path: /tmp/outputs/Output/data
+          parameters:
+          - name: length-Output
+            valueFrom:
+              path: /tmp/outputs/Output/data
+      - container:
+          args:
+          - --rv
+          - 'true'
+          - --run-id
+          - '{{inputs.parameters.run_id}}'
+          - '----output-paths'
+          - /tmp/outputs/Output/data
+          command:
+          - sh
+          - -c
+          - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+            'ml-metadata' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install
+            --quiet --no-warn-script-location 'ml-metadata' --user) && "$0" "$@"
+          - sh
+          - -ec
+          - 'program_path=$(mktemp)
+
+            printf "%s" "$0" > "$program_path"
+
+            python3 -u "$program_path" "$@"
+
+            '
+          - "def return_value(rv, run_id = \"{{ workflow.uid }}\"):\n    return rv\n\
+            \ndef _serialize_str(str_value: str) -> str:\n    if not isinstance(str_value,\
+            \ str):\n        raise TypeError('Value \"{}\" has type \"{}\" instead\
+            \ of str.'.format(\n            str(str_value), str(type(str_value))))\n\
+            \    return str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Return\
+            \ value', description='')\n_parser.add_argument(\"--rv\", dest=\"rv\"\
+            , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+            --run-id\", dest=\"run_id\", type=str, required=False, default=argparse.SUPPRESS)\n\
+            _parser.add_argument(\"----output-paths\", dest=\"_output_paths\", type=str,\
+            \ nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files =\
+            \ _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = return_value(**_parsed_args)\n\
+            \n_outputs = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\
+            \n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n\
+            \    try:\n        os.makedirs(os.path.dirname(output_file))\n    except\
+            \ OSError:\n        pass\n    with open(output_file, 'w') as f:\n    \
+            \    f.write(_output_serializers[idx](_outputs[idx]))\n"
+          image: python:3.7
+        inputs:
+          parameters:
+          - name: run_id
+        metadata:
+          annotations:
+            pipelines.kubeflow.org/arguments.parameters: '{"run_id": "{{inputs.parameters.run_id}}",
+              "rv": "true"}'
+            pipelines.kubeflow.org/component_ref: '{}'
+            pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+              {"args": ["--rv", {"inputValue": "rv"}, {"if": {"cond": {"isPresent":
+              "run_id"}, "then": ["--run-id", {"inputValue": "run_id"}]}}, "----output-paths",
+              {"outputPath": "Output"}], "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1
+              python3 -m pip install --quiet --no-warn-script-location ''ml-metadata''
+              || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+              ''ml-metadata'' --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+              \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+              "def return_value(rv, run_id = \"{{ workflow.uid }}\"):\n    return
+              rv\n\ndef _serialize_str(str_value: str) -> str:\n    if not isinstance(str_value,
+              str):\n        raise TypeError(''Value \"{}\" has type \"{}\" instead
+              of str.''.format(\n            str(str_value), str(type(str_value))))\n    return
+              str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Return
+              value'', description='''')\n_parser.add_argument(\"--rv\", dest=\"rv\",
+              type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--run-id\",
+              dest=\"run_id\", type=str, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\",
+              dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+              = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = return_value(**_parsed_args)\n\n_outputs
+              = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\n]\n\nimport
+              os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+              OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+              "image": "python:3.7"}}, "inputs": [{"name": "rv"}, {"default": "{{
+              workflow.uid }}", "name": "run_id", "optional": true, "type": "String"}],
+              "name": "Return value", "outputs": [{"name": "Output", "type": "String"}]}'
+          labels:
+            pipelines.kubeflow.org/enable_caching: 'true'
+            pipelines.kubeflow.org/kfp_sdk_version: 1.8.11
+            pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        name: return-value
+        outputs:
+          artifacts:
+          - name: return-value-Output
+            path: /tmp/outputs/Output/data
+      - container:
+          args:
+          - --rv
+          - 'true'
+          - --run-id
+          - '{{inputs.parameters.run_id}}'
+          - '----output-paths'
+          - /tmp/outputs/Output/data
+          command:
+          - sh
+          - -c
+          - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+            'ml-metadata' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install
+            --quiet --no-warn-script-location 'ml-metadata' --user) && "$0" "$@"
+          - sh
+          - -ec
+          - 'program_path=$(mktemp)
+
+            printf "%s" "$0" > "$program_path"
+
+            python3 -u "$program_path" "$@"
+
+            '
+          - "def return_value(rv, run_id = \"{{ workflow.uid }}\"):\n    return rv\n\
+            \ndef _serialize_str(str_value: str) -> str:\n    if not isinstance(str_value,\
+            \ str):\n        raise TypeError('Value \"{}\" has type \"{}\" instead\
+            \ of str.'.format(\n            str(str_value), str(type(str_value))))\n\
+            \    return str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Return\
+            \ value', description='')\n_parser.add_argument(\"--rv\", dest=\"rv\"\
+            , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+            --run-id\", dest=\"run_id\", type=str, required=False, default=argparse.SUPPRESS)\n\
+            _parser.add_argument(\"----output-paths\", dest=\"_output_paths\", type=str,\
+            \ nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files =\
+            \ _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = return_value(**_parsed_args)\n\
+            \n_outputs = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\
+            \n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n\
+            \    try:\n        os.makedirs(os.path.dirname(output_file))\n    except\
+            \ OSError:\n        pass\n    with open(output_file, 'w') as f:\n    \
+            \    f.write(_output_serializers[idx](_outputs[idx]))\n"
+          image: python:3.7
+        inputs:
+          parameters:
+          - name: run_id
+        metadata:
+          annotations:
+            pipelines.kubeflow.org/arguments.parameters: '{"run_id": "{{inputs.parameters.run_id}}",
+              "rv": "true"}'
+            pipelines.kubeflow.org/component_ref: '{}'
+            pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+              {"args": ["--rv", {"inputValue": "rv"}, {"if": {"cond": {"isPresent":
+              "run_id"}, "then": ["--run-id", {"inputValue": "run_id"}]}}, "----output-paths",
+              {"outputPath": "Output"}], "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1
+              python3 -m pip install --quiet --no-warn-script-location ''ml-metadata''
+              || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+              ''ml-metadata'' --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+              \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+              "def return_value(rv, run_id = \"{{ workflow.uid }}\"):\n    return
+              rv\n\ndef _serialize_str(str_value: str) -> str:\n    if not isinstance(str_value,
+              str):\n        raise TypeError(''Value \"{}\" has type \"{}\" instead
+              of str.''.format(\n            str(str_value), str(type(str_value))))\n    return
+              str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Return
+              value'', description='''')\n_parser.add_argument(\"--rv\", dest=\"rv\",
+              type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--run-id\",
+              dest=\"run_id\", type=str, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\",
+              dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+              = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = return_value(**_parsed_args)\n\n_outputs
+              = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\n]\n\nimport
+              os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+              OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+              "image": "python:3.7"}}, "inputs": [{"name": "rv"}, {"default": "{{
+              workflow.uid }}", "name": "run_id", "optional": true, "type": "String"}],
+              "name": "Return value", "outputs": [{"name": "Output", "type": "String"}]}'
+          labels:
+            pipelines.kubeflow.org/enable_caching: 'true'
+            pipelines.kubeflow.org/kfp_sdk_version: 1.8.11
+            pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        name: return-value-2
+        outputs:
+          artifacts:
+          - name: return-value-2-Output
+            path: /tmp/outputs/Output/data
+      - container:
+          args:
+          - --rv
+          - 'false'
+          - --run-id
+          - '{{inputs.parameters.run_id}}'
+          - '----output-paths'
+          - /tmp/outputs/Output/data
+          command:
+          - sh
+          - -c
+          - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+            'ml-metadata' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install
+            --quiet --no-warn-script-location 'ml-metadata' --user) && "$0" "$@"
+          - sh
+          - -ec
+          - 'program_path=$(mktemp)
+
+            printf "%s" "$0" > "$program_path"
+
+            python3 -u "$program_path" "$@"
+
+            '
+          - "def return_value(rv, run_id = \"{{ workflow.uid }}\"):\n    return rv\n\
+            \ndef _serialize_str(str_value: str) -> str:\n    if not isinstance(str_value,\
+            \ str):\n        raise TypeError('Value \"{}\" has type \"{}\" instead\
+            \ of str.'.format(\n            str(str_value), str(type(str_value))))\n\
+            \    return str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Return\
+            \ value', description='')\n_parser.add_argument(\"--rv\", dest=\"rv\"\
+            , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+            --run-id\", dest=\"run_id\", type=str, required=False, default=argparse.SUPPRESS)\n\
+            _parser.add_argument(\"----output-paths\", dest=\"_output_paths\", type=str,\
+            \ nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files =\
+            \ _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = return_value(**_parsed_args)\n\
+            \n_outputs = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\
+            \n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n\
+            \    try:\n        os.makedirs(os.path.dirname(output_file))\n    except\
+            \ OSError:\n        pass\n    with open(output_file, 'w') as f:\n    \
+            \    f.write(_output_serializers[idx](_outputs[idx]))\n"
+          image: python:3.7
+        inputs:
+          parameters:
+          - name: run_id
+        metadata:
+          annotations:
+            pipelines.kubeflow.org/arguments.parameters: '{"run_id": "{{inputs.parameters.run_id}}",
+              "rv": "false"}'
+            pipelines.kubeflow.org/component_ref: '{}'
+            pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+              {"args": ["--rv", {"inputValue": "rv"}, {"if": {"cond": {"isPresent":
+              "run_id"}, "then": ["--run-id", {"inputValue": "run_id"}]}}, "----output-paths",
+              {"outputPath": "Output"}], "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1
+              python3 -m pip install --quiet --no-warn-script-location ''ml-metadata''
+              || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+              ''ml-metadata'' --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+              \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+              "def return_value(rv, run_id = \"{{ workflow.uid }}\"):\n    return
+              rv\n\ndef _serialize_str(str_value: str) -> str:\n    if not isinstance(str_value,
+              str):\n        raise TypeError(''Value \"{}\" has type \"{}\" instead
+              of str.''.format(\n            str(str_value), str(type(str_value))))\n    return
+              str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Return
+              value'', description='''')\n_parser.add_argument(\"--rv\", dest=\"rv\",
+              type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--run-id\",
+              dest=\"run_id\", type=str, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\",
+              dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+              = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = return_value(**_parsed_args)\n\n_outputs
+              = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\n]\n\nimport
+              os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+              OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+              "image": "python:3.7"}}, "inputs": [{"name": "rv"}, {"default": "{{
+              workflow.uid }}", "name": "run_id", "optional": true, "type": "String"}],
+              "name": "Return value", "outputs": [{"name": "Output", "type": "String"}]}'
+          labels:
+            pipelines.kubeflow.org/enable_caching: 'true'
+            pipelines.kubeflow.org/kfp_sdk_version: 1.8.11
+            pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        name: return-value-3
+        outputs:
+          artifacts:
+          - name: return-value-3-Output
+            path: /tmp/outputs/Output/data
+      - container:
+          args:
+          - --s
+          - '{{inputs.parameters.s}}'
+          - '----output-paths'
+          - /tmp/outputs/Output/data
+          command:
+          - sh
+          - -ec
+          - 'program_path=$(mktemp)
+
+            printf "%s" "$0" > "$program_path"
+
+            python3 -u "$program_path" "$@"
+
+            '
+          - "def trim(s):\n    return s[1:-1]\n\ndef _serialize_str(str_value: str)\
+            \ -> str:\n    if not isinstance(str_value, str):\n        raise TypeError('Value\
+            \ \"{}\" has type \"{}\" instead of str.'.format(\n            str(str_value),\
+            \ str(type(str_value))))\n    return str_value\n\nimport argparse\n_parser\
+            \ = argparse.ArgumentParser(prog='Trim', description='')\n_parser.add_argument(\"\
+            --s\", dest=\"s\", type=str, required=True, default=argparse.SUPPRESS)\n\
+            _parser.add_argument(\"----output-paths\", dest=\"_output_paths\", type=str,\
+            \ nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files =\
+            \ _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = trim(**_parsed_args)\n\
+            \n_outputs = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\
+            \n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n\
+            \    try:\n        os.makedirs(os.path.dirname(output_file))\n    except\
+            \ OSError:\n        pass\n    with open(output_file, 'w') as f:\n    \
+            \    f.write(_output_serializers[idx](_outputs[idx]))\n"
+          image: python:3.7
+        inputs:
+          parameters:
+          - name: s
+        metadata:
+          annotations:
+            pipelines.kubeflow.org/arguments.parameters: '{"s": "{{inputs.parameters.s}}"}'
+            pipelines.kubeflow.org/component_ref: '{}'
+            pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+              {"args": ["--s", {"inputValue": "s"}, "----output-paths", {"outputPath":
+              "Output"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+              \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+              "def trim(s):\n    return s[1:-1]\n\ndef _serialize_str(str_value: str)
+              -> str:\n    if not isinstance(str_value, str):\n        raise TypeError(''Value
+              \"{}\" has type \"{}\" instead of str.''.format(\n            str(str_value),
+              str(type(str_value))))\n    return str_value\n\nimport argparse\n_parser
+              = argparse.ArgumentParser(prog=''Trim'', description='''')\n_parser.add_argument(\"--s\",
+              dest=\"s\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\",
+              dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+              = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = trim(**_parsed_args)\n\n_outputs
+              = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\n]\n\nimport
+              os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+              OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+              "image": "python:3.7"}}, "inputs": [{"name": "s", "type": "String"}],
+              "name": "Trim", "outputs": [{"name": "Output", "type": "String"}]}'
+          labels:
+            pipelines.kubeflow.org/enable_caching: 'true'
+            pipelines.kubeflow.org/kfp_sdk_version: 1.8.11
+            pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        name: trim
+        outputs:
+          artifacts:
+          - name: trim-Output
+            path: /tmp/outputs/Output/data
+          parameters:
+          - name: trim-Output
+            valueFrom:
+              path: /tmp/outputs/Output/data

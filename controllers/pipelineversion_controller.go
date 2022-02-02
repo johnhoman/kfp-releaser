@@ -152,6 +152,13 @@ func (r *PipelineVersionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	instance.Status.ID = version.ID
 	instance.Status.Name = version.Name
 	instance.Status.PipelineID = version.PipelineID
+	if version.Parameters != nil && len(version.Parameters) > 0 {
+		params := make([]kfpv1alpha1.Parameter, 0, len(version.Parameters))
+		for _, param := range version.Parameters {
+			params = append(params, kfpv1alpha1.Parameter{Name: param.Name, Value: param.Value})
+		}
+		instance.Status.Parameters = params
+	}
 	if !reflect.DeepEqual(old.Status, instance.Status) {
 		logger.Info("Updating status")
 		patch := client.MergeFrom(old)

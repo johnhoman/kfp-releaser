@@ -36,6 +36,18 @@ spec:
           spec:
             description: RecurringRunSpec defines the desired state of RecurringRun
             properties:
+              parameters:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
               schedule:
                 description: Foo is an example field of RecurringRun. Edit recurringrun_types.go
                   to remove/update

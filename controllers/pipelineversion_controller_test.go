@@ -201,4 +201,29 @@ var _ = Describe("PipelineVersionController", func() {
 			Expect(out.ID).To(Equal(version.Status.ID))
 		})
 	})
+	When("the pipeline versions exist", func() {
+		It("should show the parameters in the status", func() {
+			pipeline := &kfpv1alpha1.Pipeline{}
+			pipeline.SetName("create-version")
+			it.Eventually().Create(pipeline).Should(Succeed())
+			pipeline = &kfpv1alpha1.Pipeline{}
+			it.Eventually().GetWhen(types.NamespacedName{Name: "create-version"}, pipeline, func(obj client.Object) bool {
+				return len(pipeline.Status.ID) > 0
+			}).Should(Succeed())
+
+			version := &kfpv1alpha1.PipelineVersion{}
+			version.SetName("create-version-v1")
+			version.SetAnnotations(map[string]string{"kfp.jackhoman.com/pipeline-version": "1.0.1"})
+			version.Spec.Pipeline = "create-version"
+			version.Spec.Workflow.Raw = raw
+			version.Spec.Description = "version 1.0.1"
+			it.Eventually().Create(version).Should(Succeed())
+			v := &kfpv1alpha1.PipelineVersion{}
+			it.Eventually().GetWhen(types.NamespacedName{Name: version.GetName()}, v, func(obj client.Object) bool {
+				return len(obj.(*kfpv1alpha1.PipelineVersion).Status.Parameters) > 0
+			}).Should(Succeed())
+			Expect(v.Status.Parameters[0].Name).To(Equal("name"))
+			Expect(v.Status.Parameters[0].Value).To(Equal("Jack"))
+		})
+	})
 })

@@ -24,6 +24,11 @@ type RecurringRunSchedule struct {
 	Cron string `json:"cron,omitempty"`
 }
 
+type Parameter struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
 // RecurringRunSpec defines the desired state of RecurringRun
 type RecurringRunSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -32,6 +37,7 @@ type RecurringRunSpec struct {
 	// Foo is an example field of RecurringRun. Edit recurringrun_types.go to remove/update
 	Schedule   RecurringRunSchedule `json:"schedule,omitempty"`
 	VersionRef string               `json:"versionRef,omitempty"`
+	Parameters []Parameter          `json:"parameters,omitempty"`
 }
 
 // RecurringRunStatus defines the observed state of RecurringRun

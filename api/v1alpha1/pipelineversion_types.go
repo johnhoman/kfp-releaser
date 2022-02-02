@@ -40,9 +40,10 @@ type PipelineVersionSpec struct {
 type PipelineVersionStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	PipelineID string `json:"pipelineId,omitempty"`
-	Name       string `json:"name,omitempty"`
-	ID         string `json:"id,omitempty"`
+	PipelineID string      `json:"pipelineId,omitempty"`
+	Name       string      `json:"name,omitempty"`
+	ID         string      `json:"id,omitempty"`
+	Parameters []Parameter `json:"parameters,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -11,9 +11,9 @@ spec:
     metadata:
       annotations:
         pipelines.kubeflow.org/kfp_sdk_version: 1.8.11
-        pipelines.kubeflow.org/pipeline_compilation_time: '2022-02-01T22:50:15.273739'
-        pipelines.kubeflow.org/pipeline_spec: '{"inputs": [{"default": "", "name":
-          "s", "optional": true, "type": "String"}], "name": "is_palindrome"}'
+        pipelines.kubeflow.org/pipeline_compilation_time: '2022-02-01T23:07:09.496616'
+        pipelines.kubeflow.org/pipeline_spec: '{"inputs": [{"name": "s", "type": "String"}],
+          "name": "Is palindrome"}'
       generateName: is-palindrome-
       labels:
         pipelines.kubeflow.org/kfp_sdk_version: 1.8.11
@@ -21,7 +21,6 @@ spec:
       arguments:
         parameters:
         - name: s
-          value: ''
       entrypoint: is-palindrome
       serviceAccountName: pipeline-runner
       templates:

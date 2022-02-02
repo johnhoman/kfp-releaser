@@ -45,11 +45,6 @@ def is_palindrome(s: str):
             is_palindrome(substring.output)
 
 
-@dsl.pipeline(name="is_palindrome")
-def pipeline(s: str = ""):
-    is_palindrome(s)
-
-
 if __name__ == "__main__":
     import tempfile
     import os
@@ -58,26 +53,44 @@ if __name__ == "__main__":
     from kfp.compiler import Compiler
     from yaml import safe_load, safe_dump
 
-    with tempfile.NamedTemporaryFile(mode="w+t", suffix=".yaml") as open_file:
-        Compiler().compile(pipeline_func=pipeline, package_path=open_file.name)
-        with open(open_file.name, mode="rt") as open_file2:
-            workflow = open_file2.read()
+    def manifest(pipeline_func):
+        ref = os.environ.get("GITHUB_REF_NAME", "latest")
+        name = pipeline_func.__qualname__
+        with tempfile.NamedTemporaryFile(mode="w+t", suffix=".yaml") as open_file:
+            Compiler().compile(pipeline_func=pipeline_func, package_path=open_file.name)
+            with open(open_file.name, mode="rt") as open_file2:
+                workflow = open_file2.read()
 
-    ref = os.environ.get("GITHUB_REF_NAME", "latest")
+        name = name.replace("_", "-").lower()
+        version_name = name + "-" + ref
 
-    manifest = {
-        "apiVersion": "aws.jackhoman.com/v1alpha1",
-        "kind": "PipelineVersion",
-        "metadata": {
-            "name": f"is-palindrome-{ref}",
-        },
-        "spec": {
-            "pipeline": "is-palindrome",
-            "description": f"pipeline release {ref}",
-            "workflow": safe_load(workflow),
+        version = {
+            "apiVersion": "aws.jackhoman.com/v1alpha1",
+            "kind": "PipelineVersion",
+            "metadata": {"name": version_name},
+            "spec": {
+                "pipeline": name,
+                "description": f"pipeline release {ref}",
+                "workflow": safe_load(workflow),
+            }
         }
-    }
-    path = pathlib.Path(__file__).parent.joinpath("versions", f"is-palindrome-{ref}.yaml")
+        base = pathlib.Path(__file__).parent.joinpath("pipeline", f"{name}.yaml")
+        path = pathlib.Path(__file__).parent.joinpath("versions", f"{version_name}.yaml")
 
-    with path.open(mode="wt") as open_file:
-        safe_dump(manifest, stream=open_file, default_flow_style=False)
+        with path.open(mode="wt") as open_file:
+            safe_dump(version, stream=open_file, default_flow_style=False)
+
+        if not base.exists():
+            pipeline = {
+                "apiVersion": "aws.jackhoman.com/v1alpha1",
+                "kind": "Pipeline",
+                "metadata": {"name": name},
+                "spec": {
+                    "description": "pipeline declaration",
+                }
+            }
+            base.parent.mkdir(parents=True, exist_ok=True)
+            with base.open(mode="wt") as open_file:
+                safe_dump(pipeline, stream=open_file, default_flow_style=False)
+
+    manifest(pipeline_func=is_palindrome)

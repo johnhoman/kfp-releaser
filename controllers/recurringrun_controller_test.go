@@ -160,7 +160,7 @@ var _ = Describe("RecurringRunController", func() {
 					}).Should(Equal(kfp.NewNotFound()))
 				})
 			})
-			It("create a job", func() {
+			It("creates a job", func() {
 				var job *kfp.Job
 				Eventually(func() error {
 					var err error

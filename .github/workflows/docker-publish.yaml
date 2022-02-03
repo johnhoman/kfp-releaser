@@ -1,4 +1,4 @@
-name: "Build Kustomization"
+name: "Docker Publish"
 on:
   push:
     tags:

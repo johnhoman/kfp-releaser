@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/go-openapi/runtime v0.21.0
 	github.com/johnhoman/controller-tools v0.0.0-20220117051647-2837fbc02d51
-	github.com/johnhoman/go-kfp v0.1.9
+	github.com/johnhoman/go-kfp v0.1.10
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
 	k8s.io/api v0.23.0

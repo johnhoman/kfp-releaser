@@ -87,6 +87,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				if !kfp.IsNotFound(err) {
 					return ctrl.Result{}, err
 				}
+				logger.Info("upstream resource not found")
+			} else {
+				logger.Info("Deleted upstream resource")
 			}
 
 			patch := client.MergeFrom(instance.DeepCopy())

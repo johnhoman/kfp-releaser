@@ -96,7 +96,7 @@ var _ = Describe("PipelineController", func() {
 			Eventually(func() error {
 				_, err := service.Get(it.GetContext(), &kfp.GetOptions{ID: instance.Status.ID})
 				return err
-			}, "5s").Should(Equal(kfp.NewNotFound()))
+			}).Should(Equal(kfp.NewNotFound()))
 		})
 	})
 	Context("CreatePipeline", func() {

@@ -160,6 +160,15 @@ var _ = Describe("RecurringRunController", func() {
 					}).Should(Equal(kfp.NewNotFound()))
 				})
 			})
+			It("create a job", func() {
+				var job *kfp.Job
+				Eventually(func() error {
+					var err error
+					job, err = api.GetJob(it.GetContext(), &kfp.GetOptions{ID: recurringRun.Status.ID})
+					return err
+				}).ShouldNot(HaveOccurred())
+				Expect(job.Parameters).Should(HaveLen(1))
+			})
 		})
 	})
 

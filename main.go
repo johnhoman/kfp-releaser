@@ -18,6 +18,8 @@ package main
 
 import (
 	"flag"
+	"go.uber.org/zap/zapcore"
+	"io/ioutil"
 	"os"
 
 	httptransport "github.com/go-openapi/runtime/client"
@@ -98,13 +100,16 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var apiServer string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&apiServer, "ml-pipeline-api-server", "ml-pipeline.kubeflow.svc.cluster.local:8888", "The ml-pipeline api server address")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	opts := zap.Options{
 		Development: true,
+		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -123,15 +128,26 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
-	// TODO: Real Kubeflow will need an auth token from /var/run/secrets/kubeflow/token
-
-	transport := httptransport.New("ml-pipeline.kubeflow.svc.cluster.local:8888", "", []string{"http"})
+	transport := httptransport.New(apiServer, "", []string{"http"})
 	pipelines := kfp.NewPipelineService(transport)
+	api := kfp.New(pipelines, nil)
+	token, err := ioutil.ReadFile("/var/run/secrets/kubeflow/pipelines")
+	if os.IsNotExist(err) {
+		setupLog.Info(
+			"kubeflow pipelines service account token not found",
+			"warning",
+			`file "/var/run/secrets/kubeflow/pipelines" not found`,
+		)
+	} else if err != nil {
+		setupLog.Error(err, "an error occurred reading the service account token")
+	} else {
+		api = kfp.New(pipelines, httptransport.BearerToken(string(token)))
+	}
 
 	if err = (&controllers.PipelineReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		Pipelines:     kfp.New(pipelines, nil),
+		Pipelines:     api,
 		BlankWorkflow: newWhaleSay(),
 		EventRecorder: mgr.GetEventRecorderFor("kfp.jackhoman.com"),
 	}).SetupWithManager(mgr); err != nil {
@@ -141,15 +157,16 @@ func main() {
 	if err = (&controllers.PipelineVersionReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		Pipelines:     kfp.New(pipelines, nil),
+		Pipelines:     api,
 		EventRecorder: mgr.GetEventRecorderFor("kfp.jackhoman.com"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PipelineVersion")
 		os.Exit(1)
 	}
 	if err = (&controllers.RecurringRunReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		EventRecorder: mgr.GetEventRecorderFor("kfp.jackhoman.com"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "RecurringRun")
 		os.Exit(1)

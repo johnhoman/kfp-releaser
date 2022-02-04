@@ -70,7 +70,9 @@ build: generate fmt vet ## Build manager binary.
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./main.go -metrics-bind-address ":8082"
+	go run ./main.go \
+		-metrics-bind-address ":8082" \
+		-ml-pipeline-api-server="$(shell minikube service kfp --url -n kubeflow | sed 's/http:\/\///g')"
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.

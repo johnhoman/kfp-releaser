@@ -61,7 +61,7 @@ EOF
 application.argoproj.io/whalesay created
 ```
 
-The `whalesay` pipeline and it's versions are now synced with kubeflow (notice the pipeline IDs)
+The `whalesay` pipeline and it's versions are now synced with kubeflow
 ```shell
 ➜  kfp-releaser git:(main) ✗ kubectl get pipelines --all-namespaces       
 NAMESPACE           NAME     PIPELINEID
@@ -85,6 +85,8 @@ kind: RecurringRun
 metadata:
   name: cowsay-v1.0.0-every-minute
   namespace: kubeflow-examples
+  labels:
+    kfp.jackhoman.com/experiment-name: "default"
 spec:
   versionRef: cowsay-v1.0.0
   schedule:

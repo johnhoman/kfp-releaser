@@ -57,7 +57,7 @@ var _ = Describe("RecurringRunController", func() {
 			Client:        it.GetClient(),
 			Scheme:        it.GetScheme(),
 			EventRecorder: it.GetEventRecorderFor("kfp-releaser.controller-test"),
-			api:           service,
+			Pipelines:     service,
 		}).SetupWithManager(it)
 		Expect(err).ToNot(HaveOccurred())
 

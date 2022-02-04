@@ -41,7 +41,7 @@ type RecurringRunReconciler struct {
 	Scheme *runtime.Scheme
 	record.EventRecorder
 
-	api kfp.Interface
+	Pipelines kfp.Interface
 }
 
 const (
@@ -59,7 +59,7 @@ const (
 func (r *RecurringRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	k8s := client.NewNamespacedClient(r.Client, req.Namespace)
-	api := kfp.NewNamespaced(r.api, req.Namespace)
+	api := kfp.NewNamespaced(r.Pipelines, req.Namespace)
 
 	instance := &kfpv1alpha1.RecurringRun{}
 	if err := k8s.Get(ctx, req.NamespacedName, instance); err != nil {

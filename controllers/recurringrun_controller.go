@@ -126,6 +126,16 @@ func (r *RecurringRunReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if !kfp.IsNotFound(err) {
 			return ctrl.Result{}, err
 		}
+		var parameters []kfp.Parameter = nil
+		if instance.Spec.Parameters != nil && len(instance.Spec.Parameters) > 0 {
+			parameters = make([]kfp.Parameter, 0, len(instance.Spec.Parameters))
+			for _, param := range instance.Spec.Parameters {
+				parameters = append(parameters, kfp.Parameter{
+					Name:  param.Name,
+					Value: param.Value,
+				})
+			}
+		}
 		job, err = api.CreateJob(ctx, &kfp.CreateJobOptions{
 			Name:           instance.GetName(),
 			PipelineID:     version.Status.PipelineID,
@@ -133,6 +143,7 @@ func (r *RecurringRunReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			CronSchedule:   instance.Spec.Schedule.Cron,
 			Enabled:        true,
 			MaxConcurrency: 1,
+			Parameters:     parameters,
 		})
 		if err != nil {
 			logger.Error(err, "an error occurred creating the recurring run")

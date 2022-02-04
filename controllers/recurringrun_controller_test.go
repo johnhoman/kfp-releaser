@@ -112,6 +112,10 @@ var _ = Describe("RecurringRunController", func() {
 				recurringRun.SetFinalizers([]string{"keep"})
 				recurringRun.Spec.Schedule = kfpv1alpha1.RecurringRunSchedule{Cron: "* * * * *"}
 				recurringRun.Spec.VersionRef = version.GetName()
+				recurringRun.Spec.Parameters = []kfpv1alpha1.Parameter{{
+					Name:  "name",
+					Value: "Starlord",
+				}}
 				it.Eventually().Create(recurringRun).Should(Succeed())
 				it.Eventually().GetWhen(versionKey, recurringRun, func(obj client.Object) bool {
 					return len(obj.(*kfpv1alpha1.RecurringRun).Status.ID) > 0
@@ -168,6 +172,8 @@ var _ = Describe("RecurringRunController", func() {
 					return err
 				}).ShouldNot(HaveOccurred())
 				Expect(job.Parameters).Should(HaveLen(1))
+				Expect(job.Parameters[0].Name).Should(Equal("name"))
+				Expect(job.Parameters[0].Value).Should(Equal("Starlord"))
 			})
 		})
 	})

@@ -428,8 +428,8 @@ github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHW
 github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfCI6z80xFu9LTZmf1ZRjMHUOPmWr69U=
 github.com/johnhoman/controller-tools v0.0.0-20220117051647-2837fbc02d51 h1:1ifNSeuVSmBX6XWahSU/UUCDHP0Hrs0uLCAZhH0Lupo=
 github.com/johnhoman/controller-tools v0.0.0-20220117051647-2837fbc02d51/go.mod h1:ThFyhv46xXiXY9Gn3gEz5F/59Ojcr4WjqCIZzTEToAM=
-github.com/johnhoman/go-kfp v0.1.10 h1:rrypOzfVOS+XEu1k14SZra7Ji+6tSyBr1DHgqUI97Ws=
-github.com/johnhoman/go-kfp v0.1.10/go.mod h1:Gbmi1MdSuqcBsJhj8GkhpcNgnZNmb9pEMuKQzKbixRI=
+github.com/johnhoman/go-kfp v0.1.11 h1:zuY7o5+JIy88cEm4QIkRgemGDTB1+DEKBBbwV+OSsTs=
+github.com/johnhoman/go-kfp v0.1.11/go.mod h1:Gbmi1MdSuqcBsJhj8GkhpcNgnZNmb9pEMuKQzKbixRI=
 github.com/joho/godotenv v1.3.0/go.mod h1:7hK45KPybAkOC6peb+G5yklZfMxEjkZhHbwpqxOKXbg=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
 github.com/jonboulle/clockwork v0.2.2/go.mod h1:Pkfl5aHPm1nk2H9h0bjmnJD/BcgbGXUBGnn1kMkgxc8=

@@ -76,7 +76,7 @@ var _ = Describe("PipelineController", func() {
 				return len(obj.GetFinalizers()) == 1
 			}).Should(Succeed())
 		})
-		It("Should remove the upstream resource on deletion", func() {
+		FIt("Should remove the upstream resource on deletion", func() {
 			instance := &kfpv1alpha1.Pipeline{}
 			instance.SetName("finalized")
 			instance.SetFinalizers([]string{"keep"}) // keeps the object from being deleted
@@ -87,6 +87,9 @@ var _ = Describe("PipelineController", func() {
 			}).Should(Succeed())
 			Expect(instance.Finalizers).Should(ContainElement(Finalizer))
 			Expect(instance.ManagedFields[0].Manager).To(Equal(string(FieldOwner)))
+			it.Eventually().GetWhen(types.NamespacedName{Name: "finalized"}, instance, func(obj client.Object) bool {
+				return len(obj.(*kfpv1alpha1.Pipeline).Status.ID) > 0
+			})
 
 			it.Expect().Delete(instance).Should(Succeed())
 			instance = &kfpv1alpha1.Pipeline{}

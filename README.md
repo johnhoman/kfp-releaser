@@ -41,20 +41,20 @@ create the following argo application to install the pipelines
 ```shell
 kubectl create namespace namespace kubeflow-examples
 cat <<EOF | kubectl apply -f -
-apiVersion: argoproj.io/v1alpha1                                                                                                                                                              
-kind: Application                                                                                                                                                                             
-metadata:                                                                                                                                                                                     
-  name: whalesay                                                                                                                                                                              
-  namespace: argocd                                                                                                                                                                           
-spec:                                                                                                                                                                                         
-  destination:                                                                                                                                                                                
-    namespace: kubeflow-examples                                                                                                                                                              
-    server: https://kubernetes.default.svc                                                                                                                                                    
-  project: default                                                                                                                                                                            
-  source:                                                                                                                                                                                     
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: whalesay
+  namespace: argocd
+spec:
+  destination:
+    namespace: kubeflow-examples
+    server: https://kubernetes.default.svc
+  project: default
+  source:
     path: examples/whalesay
     repoURL: https://github.com/johnhoman/kfp-releaser
-    targetRevision: HEAD                                                                                                                                                                      
+    targetRevision: HEAD
     directory:
       recurse: true
 EOF
@@ -79,7 +79,7 @@ kubeflow-examples   cowsay-v3.0.0   cowsay-v3.0.0   cowsay         2d226a37-95ee
 ### Create a RecurringRun
 
 ```shell
-cat <<EOF | kubectl apply -f -
+➜  kfp-releaser git:(main) ✗ cat <<EOF | kubectl apply -f -
 apiVersion: kfp.jackhoman.com/v1alpha1
 kind: RecurringRun
 metadata:
@@ -89,9 +89,10 @@ spec:
   versionRef: cowsay-v1.0.0
   schedule:
     cron: '* * * * *'
+  parameters:
+  - {name: name, value: Jack}
 EOF
 ```
-
 
 [Controller]: https://kubernetes.io/docs/concepts/architecture/controller
 [Kubeflow]: https://kubeflow.org

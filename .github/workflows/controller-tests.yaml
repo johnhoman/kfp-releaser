@@ -16,9 +16,5 @@ jobs:
     - run: go mod tidy && git diff --check
     - run: minikube start --kubernetes-version=v1.20.2 --memory=4400
     - run: kubectl apply -k github.com/johnhoman/go-kfp/config/ && sleep 60
-    - run: |
-        # download kubebuilder and install locally.
-        curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)
-        chmod +x kubebuilder && sudo mv kubebuilder /usr/local/bin/
     - run: kubectl wait --for=condition=ready pod -l app=ml-pipeline -n kubeflow --timeout=10m
     - run: make test

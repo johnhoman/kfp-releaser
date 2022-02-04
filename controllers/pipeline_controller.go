@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 
@@ -83,11 +84,12 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// Delete resources
 		if cu.ContainsFinalizer(instance, Finalizer) {
 			// Delete the resource
+			// TODO: For some reason it's going here with an empty status
+			//       which doesn't make a whole lot of sense since only
+			//       a single object is supposed to be reconciled at a time
 			if err := r.Pipelines.Delete(ctx, &kfp.DeleteOptions{ID: instance.Status.ID}); err != nil {
-				if !kfp.IsNotFound(err) {
-					return ctrl.Result{}, err
-				}
 				logger.Info("upstream resource not found")
+				return ctrl.Result{}, err
 			} else {
 				logger.Info("Deleted upstream resource")
 			}
@@ -143,6 +145,10 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			r.Event(instance, corev1.EventTypeWarning, "DeleteVersionError", err.Error())
 			return ctrl.Result{}, err
 		}
+		r.Eventf(instance, corev1.EventTypeNormal, "Created", fmt.Sprintf(
+			"created pipeline with id %s",
+			pipeline.ID,
+		))
 	}
 	// Own all versions
 	versionList := &kfpv1alpha1.PipelineVersionList{}
@@ -167,8 +173,10 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if !reflect.DeepEqual(instance.Status, old.Status) {
 		patch := client.MergeFrom(old)
 		if err := k8s.Status().Patch(ctx, instance, patch); err != nil {
+			logger.Error(err, "failed to update status")
 			return ctrl.Result{}, err
 		}
+		logger.Info("Updated status")
 	}
 
 	return ctrl.Result{}, nil

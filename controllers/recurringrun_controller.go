@@ -48,6 +48,7 @@ const (
 	RecurringRunFinalizer = "kfp.jackhoman.com/delete-recurring-run"
 )
 
+//+kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=recurringruns,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=recurringruns/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=recurringruns/finalizers,verbs=update

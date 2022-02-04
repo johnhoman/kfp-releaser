@@ -56,6 +56,7 @@ const (
 	ReasonAPIError                = "APIError"
 )
 
+//+kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelines,verbs=get;list;watch
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelines/status,verbs=get
 //+kubebuilder:rbac:groups=kfp.jackhoman.com,resources=pipelineversions,verbs=get;list;watch;create;update;patch;delete

@@ -11,7 +11,7 @@ spec:
     metadata:
       annotations:
         pipelines.kubeflow.org/kfp_sdk_version: 1.8.11
-        pipelines.kubeflow.org/pipeline_compilation_time: '2022-02-02T00:34:18.993265'
+        pipelines.kubeflow.org/pipeline_compilation_time: '2022-02-03T23:15:49.722406'
         pipelines.kubeflow.org/pipeline_spec: '{"inputs": [{"name": "s", "type": "String"},
           {"default": "{{ workflow.uid }}", "name": "run_id", "optional": true, "type":
           "String"}], "name": "Is palindrome"}'
@@ -139,6 +139,8 @@ spec:
             when: '"{{tasks.compare.outputs.parameters.compare-Output}}" == "false"'
           - arguments:
               parameters:
+              - name: run_id
+                value: '{{inputs.parameters.run_id}}'
               - name: s
                 value: '{{inputs.parameters.s}}'
             dependencies:
@@ -167,6 +169,8 @@ spec:
           tasks:
           - arguments:
               parameters:
+              - name: run_id
+                value: '{{inputs.parameters.run_id}}'
               - name: s
                 value: '{{tasks.trim.outputs.parameters.trim-Output}}'
             dependencies:
@@ -181,6 +185,7 @@ spec:
             template: trim
         inputs:
           parameters:
+          - name: run_id
           - name: s
         name: condition-6
       - dag:

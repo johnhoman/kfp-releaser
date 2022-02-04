@@ -44,7 +44,7 @@ def is_palindrome(s: str, run_id: str = "{{ workflow.uid }}"):
         with dsl.Condition(comp.output == "true"):
             substring = trim(s)
             substring.after(comp)
-            is_palindrome(substring.output)
+            is_palindrome(substring.output, run_id)
 
 
 if __name__ == "__main__":
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         version_name = name + "-" + ref
 
         version = {
-            "apiVersion": "aws.jackhoman.com/v1alpha1",
+            "apiVersion": "kfp.jackhoman.com/v1alpha1",
             "kind": "PipelineVersion",
             "metadata": {"name": version_name},
             "spec": {

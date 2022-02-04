@@ -1,4 +1,4 @@
-apiVersion: aws.jackhoman.com/v1alpha1
+apiVersion: kfp.jackhoman.com/v1alpha1
 kind: PipelineVersion
 metadata:
   name: is-palindrome-v1.0.1

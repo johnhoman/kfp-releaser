@@ -86,7 +86,7 @@ if __name__ == "__main__":
 
         if not base.exists():
             pipeline = {
-                "apiVersion": "aws.jackhoman.com/v1alpha1",
+                "apiVersion": "kfp.jackhoman.com/v1alpha1",
                 "kind": "Pipeline",
                 "metadata": {"name": name},
                 "spec": {

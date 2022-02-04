@@ -76,7 +76,7 @@ var _ = Describe("PipelineController", func() {
 				return len(obj.GetFinalizers()) == 1
 			}).Should(Succeed())
 		})
-		FIt("Should remove the upstream resource on deletion", func() {
+		It("Should remove the upstream resource on deletion", func() {
 			instance := &kfpv1alpha1.Pipeline{}
 			instance.SetName("finalized")
 			instance.SetFinalizers([]string{"keep"}) // keeps the object from being deleted

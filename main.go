@@ -167,6 +167,7 @@ func main() {
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
 		EventRecorder: mgr.GetEventRecorderFor("kfp.jackhoman.com"),
+		Pipelines:     api,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "RecurringRun")
 		os.Exit(1)

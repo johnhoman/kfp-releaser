@@ -149,7 +149,7 @@ func main() {
 		Scheme:        mgr.GetScheme(),
 		Pipelines:     api,
 		BlankWorkflow: newWhaleSay(),
-		EventRecorder: mgr.GetEventRecorderFor("kfp.jackhoman.com"),
+		EventRecorder: mgr.GetEventRecorderFor("controller.pipeline"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Pipeline")
 		os.Exit(1)
@@ -158,7 +158,7 @@ func main() {
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
 		Pipelines:     api,
-		EventRecorder: mgr.GetEventRecorderFor("kfp.jackhoman.com"),
+		EventRecorder: mgr.GetEventRecorderFor("controller.pipelineversion"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PipelineVersion")
 		os.Exit(1)
@@ -166,7 +166,7 @@ func main() {
 	if err = (&controllers.RecurringRunReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("kfp.jackhoman.com"),
+		EventRecorder: mgr.GetEventRecorderFor("controller.recurringrun"),
 		Pipelines:     api,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "RecurringRun")

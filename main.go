@@ -18,26 +18,20 @@ package main
 
 import (
 	"flag"
-	"go.uber.org/zap/zapcore"
 	"io/ioutil"
 	"os"
 
 	httptransport "github.com/go-openapi/runtime/client"
+	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/johnhoman/go-kfp"
-	"github.com/johnhoman/go-kfp/api/pipeline/client/pipeline_service"
-	"github.com/johnhoman/go-kfp/api/pipeline_upload/client/pipeline_upload_service"
-
 	kfpv1alpha1 "github.com/johnhoman/kfp-releaser/api/v1alpha1"
 	"github.com/johnhoman/kfp-releaser/controllers"
 	//+kubebuilder:scaffold:imports
@@ -54,9 +48,6 @@ func init() {
 	utilruntime.Must(kfpv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
-
-type UploadService = pipeline_upload_service.ClientService
-type PipelineService = pipeline_service.ClientService
 
 func newWhaleSay() map[string]interface{} {
 	// Not sure if the name actually matters -- might be able to swap it for a uuid
@@ -131,12 +122,13 @@ func main() {
 	transport := httptransport.New(apiServer, "", []string{"http"})
 	pipelines := kfp.NewPipelineService(transport)
 	api := kfp.New(pipelines, nil)
+	// This will need to be reloaded regularly
 	token, err := ioutil.ReadFile("/var/run/secrets/kubeflow/pipelines")
 	if os.IsNotExist(err) {
 		setupLog.Info(
 			"kubeflow pipelines service account token not found",
 			"warning",
-			`file "/var/run/secrets/kubeflow/pipelines" not found`,
+			"file /var/run/secrets/kubeflow/pipelines not found",
 		)
 	} else if err != nil {
 		setupLog.Error(err, "an error occurred reading the service account token")

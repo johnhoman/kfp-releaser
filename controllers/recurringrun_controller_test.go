@@ -110,7 +110,7 @@ var _ = Describe("RecurringRunController", func() {
 				recurringRun = &kfpv1alpha1.RecurringRun{}
 				recurringRun.SetName(versionKey.Name)
 				recurringRun.SetFinalizers([]string{"keep"})
-				recurringRun.Spec.Schedule = kfpv1alpha1.RecurringRunSchedule{Cron: "* * * * *"}
+				recurringRun.Spec.Schedule = kfpv1alpha1.RecurringRunSchedule{Cron: "0 * * * * ?"}
 				recurringRun.Spec.VersionRef = version.GetName()
 				recurringRun.Spec.Parameters = []kfpv1alpha1.Parameter{{
 					Name:  "name",
@@ -177,5 +177,4 @@ var _ = Describe("RecurringRunController", func() {
 			})
 		})
 	})
-
 })

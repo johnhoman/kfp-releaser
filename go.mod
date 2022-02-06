@@ -4,10 +4,11 @@ go 1.17
 
 require (
 	github.com/go-openapi/runtime v0.21.0
-	github.com/johnhoman/controller-tools v0.0.0-20220117051647-2837fbc02d51
+	github.com/johnhoman/controller-tools v0.0.0-20220130205403-48b6692ecfd3
 	github.com/johnhoman/go-kfp v0.1.11
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
+	go.uber.org/zap v1.19.1
 	k8s.io/api v0.23.0
 	k8s.io/apimachinery v0.23.0
 	k8s.io/client-go v0.23.0
@@ -70,7 +71,6 @@ require (
 	go.mongodb.org/mongo-driver v1.7.5 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	go.uber.org/zap v1.19.1 // indirect
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
 	golang.org/x/net v0.0.0-20210825183410-e898025ed96a // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f // indirect

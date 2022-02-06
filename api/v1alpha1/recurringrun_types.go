@@ -51,6 +51,8 @@ type RecurringRunStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Schedule",type=string,JSONPath=`.spec.schedule.cron`
+//+kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.spec.versionRef`
 
 // RecurringRun is the Schema for the recurringruns API
 type RecurringRun struct {

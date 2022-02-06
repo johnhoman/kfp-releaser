@@ -4,7 +4,7 @@ metadata:
   name: racecar
 spec:
   schedule:
-    cron: 0 * * * *
+    cron: 0 * * * * *
   versionRef: is-palindrome-v1.0.1
   parameters:
   - name: s

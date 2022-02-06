@@ -3,22 +3,25 @@ Copied from https://www.kubeflow.org/docs/components/pipelines/sdk/output-viewer
 """
 
 from kfp.v2.dsl import component
-from kfp.v2.dsl import Output, ClassificationMetrics
+from kfp.v2.dsl import Output, ClassificationMetrics, Model
 from kfp.v2 import dsl
 
 
-@component(packages_to_install=['sklearn'], base_image='python:3.9')
+@component(packages_to_install=["sklearn", "joblib"], base_image="python:3.9")
 def iris_sgdclassifier(
     test_samples_fraction: float,
     metrics: Output[ClassificationMetrics],
+    model: Output[Model],
 ):
     from sklearn import datasets, model_selection
     from sklearn.linear_model import SGDClassifier
     from sklearn.metrics import confusion_matrix
+    import sklearn.metrics as sklearn_metrics
+    from joblib import dump
 
     iris_dataset = datasets.load_iris()
     train_x, test_x, train_y, test_y = model_selection.train_test_split(
-        iris_dataset['data'], iris_dataset['target'], test_size=test_samples_fraction)
+        iris_dataset["data"], iris_dataset["target"], test_size=test_samples_fraction)
 
     classifier = SGDClassifier()
     classifier.fit(train_x, train_y)
@@ -32,6 +35,14 @@ def iris_sgdclassifier(
         ['Setosa', 'Versicolour', 'Virginica'],
         confusion_matrix(train_y, predictions).tolist()
     )
+
+    with open(model.path, "wb") as fp:
+        dump(classifier, fp)
+
+    pred = classifier.predict(test_x)
+    model.metadata["accuracy-score"] = sklearn_metrics.accuracy_score(pred, test_y)
+    model.metadata["accuracy_score"] = sklearn_metrics.accuracy_score(pred, test_y)
+    model.metadata["accuracy"] = sklearn_metrics.accuracy_score(pred, test_y)
 
 
 @dsl.pipeline(name="iris-classifier")

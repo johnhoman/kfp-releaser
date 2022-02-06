@@ -1,0 +1,11 @@
+apiVersion: kfp.jackhoman.com/v1alpha1
+kind: RecurringRun
+metadata:
+  name: racecar
+spec:
+  schedule:
+    cron: 0 * * * *
+  versionRef: is-palindrome-v1.0.1
+  parameters:
+  - name: s
+    value: racecar

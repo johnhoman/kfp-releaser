@@ -21,7 +21,10 @@ def iris_sgdclassifier(
 
     iris_dataset = datasets.load_iris()
     train_x, test_x, train_y, test_y = model_selection.train_test_split(
-        iris_dataset["data"], iris_dataset["target"], test_size=test_samples_fraction)
+        iris_dataset["data"],
+        iris_dataset["target"],
+        test_size=test_samples_fraction,
+    )
 
     classifier = SGDClassifier()
     classifier.fit(train_x, train_y)
@@ -40,8 +43,6 @@ def iris_sgdclassifier(
         dump(classifier, fp)
 
     pred = classifier.predict(test_x)
-    model.metadata["accuracy-score"] = sklearn_metrics.accuracy_score(pred, test_y)
-    model.metadata["accuracy_score"] = sklearn_metrics.accuracy_score(pred, test_y)
     model.metadata["accuracy"] = sklearn_metrics.accuracy_score(pred, test_y)
 
 
